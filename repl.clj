@@ -1,10 +1,5 @@
 (ns cstack)
 
-(:exit meta-command)
-
-(defn print-prompt []
-  (prn "db> "))
-
 (defn start-message []
   (println "SQLite clone v.0.0.1")
   (println "Enter \".help\" for usage hints")
