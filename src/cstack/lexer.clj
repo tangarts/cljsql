@@ -43,8 +43,6 @@
       (astring? c) :string
       :else (throw (IllegalArgumentException. (str "Don't know type of token:" token))))))
 
-(keywords "select")
-(what-type "select")
 (defn typer [token]
   {:token token
    :type (what-type token)})
@@ -53,7 +51,3 @@
 
 (defn lex [sql-str]
   (mapv typer (map first (re-seq REGEX sql-str))))
-
-(lex "select * from places where locality=\"los angeles\";")
-(def sql-str  "insert into db values (1, \"username\", \"user@clj.org\"")
-(def sql-str1  "select * from places where locality=\"los angeles\";")
