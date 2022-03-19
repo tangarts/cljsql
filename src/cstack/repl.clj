@@ -31,15 +31,22 @@
   [token expected]
   (= (token :token) expected))
 
-(def -vs (subvec v 4))
+(comment
 
-(apply ->Row
-       (mapv
-        (fn [v] (convert (v :token) (v :type)))
-        (filter #(not= (-> % :type) :symbol) -vs)))
+  (def v (lex "insert into db values (1, 'user', 'user@clj.org')"))
+  (insert-row (subvec v 4))
+  (def -vs (subvec v 4))
 
-(def v (lex "insert into db values (1, 'user', 'user@clj.org')"))
-(insert-row (subvec v 4))
+  (def sql-str1 (lex   "select id, username from places where locality=\"los angeles\";"))
+  (second (split-with #(not= (-> % :token) "values") v))
+
+  (split-with #(not= (-> % :token) "from") (rest sql-str1))
+  (-> sql-str1 first :token)
+
+  (apply ->Row
+         (mapv
+          (fn [v] (convert (v :token) (v :type)))
+          (filter #(not= (-> % :type) :symbol) -vs))))
 
 (defn insert-fn
   "
@@ -60,13 +67,39 @@
 (insert-fn
  (lex "insert into db values (1, user, user@clj.org)"))
 
-(defn select-fn [input]
-  input
-  "This is where we would do a create")
+(defn select-fn
+  "
+    SELECT
+    $expression [, ...]
+    FROM
+    $table-name 
+  "
+  [input]
+  (let [[select-expr from-expr]
+        (split-with #(not= (-> % :token) "from") (rest input))]
+    {:table (second from-expr)
+     :expression (vec select-expr)}))
 
-(defn create-fn [input]
-  input
-  "This is where we would do a create")
+(select-fn (lex "select id, username from customer"))
+
+(defn create-table [input]
+  (partition 2 (filter #(not= (-> % :type) :symbol) input)))
+(defn create-fn
+  "
+    CREATE
+    $table-name
+    (
+    [$column-name $column-type [, ...]]
+    ) 
+  "
+  [input]
+  (if (expect-token (input 1) "table") 
+    (if (expect-token (input 2) "customer") ; table-name
+      (create-table (subvec input 3))
+      (prn "Expected Values"))
+    (prn "Expected table name: ")))
+
+(create-fn (lex "create table customer (id int, name text, email text);"))
 
 (def command
   {:select select-fn
