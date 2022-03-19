@@ -52,7 +52,7 @@
 (asymbol? "1- >= 3")
 
 (defn lex [sql-str]
-  (map typer (map first (re-seq REGEX sql-str))))
+  (mapv typer (map first (re-seq REGEX sql-str))))
 
 (lex "select * from places where locality=\"los angeles\";")
 (def sql-str  "insert into db values (1, \"username\", \"user@clj.org\"")
