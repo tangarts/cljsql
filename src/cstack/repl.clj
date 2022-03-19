@@ -1,5 +1,6 @@
 (ns cstack.repl
-  (:require [clojure.string :as str]))
+  (:require [clojure.string :as str]
+            [cstack.lexer :refer [lex]]))
 
 (def db (atom []))
 
@@ -13,16 +14,31 @@
   (println "Use \".open FILENAME\" to re-open a persistent database."))
 
 (defrecord Row [^Integer id ^String username ^String email])
-(def one (->Row 1 "user1" "user1@clj.org"))
-(-> one :id)
 
-(defn insert-row [values]
-  (map->Row
-    (zipmap [:id :username :email]
-          (rest (str/split
-                 (str/join values) #",|\)|\(")))))
+(defn convert [value type]
+  (case type
+    :number (Integer/parseInt value)
+    value))
 
-(def v ["insert" "into" "db" "values" "(1," "user," "user@clj.org)"])
+(defn insert-row
+  [expr]
+  (apply ->Row
+         (mapv
+          (fn [v] (convert (v :token) (v :type)))
+          (filter #(not= (-> % :type) :symbol) expr))))
+
+(defn expect-token
+  [token expected]
+  (= (token :token) expected))
+
+(def -vs (subvec v 4))
+
+(apply ->Row
+       (mapv
+        (fn [v] (convert (v :token) (v :type)))
+        (filter #(not= (-> % :type) :symbol) -vs)))
+
+(def v (lex "insert into db values (1, 'user', 'user@clj.org')"))
 (insert-row (subvec v 4))
 
 (defn insert-fn
@@ -33,16 +49,16 @@
     VALUES ( $expression [, ...])
   "
   [input]
-  (if (= (input 1) "into")
-    (if (= (input 2) "db")
-      (if (= (input 3) "values")
+  (if (expect-token (input 1) "into")
+    (if (expect-token (input 2) "db") ; table-name
+      (if (expect-token (input 3) "values")
         (insert-row (subvec input 4))
         (prn "Expected Values"))
       (prn "Table doesn't exist"))
     (prn "Expected INTO statement")))
 
 (insert-fn
-  (read-input "insert into db values (1, user, user@clj.org)"))
+ (lex "insert into db values (1, user, user@clj.org)"))
 
 (defn select-fn [input]
   input
@@ -59,7 +75,7 @@
 
 (defn -main []
   (start-message)
-  (loop [input (read-input (read-line))]
+  (loop [input (lex (read-line))]
     (print "sqlite> ")
     (let [statement (first input)]
       (if (or (= statement ".exit") (= statement ".quit")) (print "bye!")
@@ -67,7 +83,7 @@
             (condp contains? (keyword statement)
               command (println (((keyword statement) command) input))
               (println "Unrecognized command " input))
-            (recur (read-input (read-line))))))))
+            (recur (lex (read-line))))))))
 
 ((command :select) 1)
 
