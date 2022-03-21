@@ -1,11 +1,6 @@
 (ns cstack.repl
-  (:require [clojure.string :as str]
-            [cstack.lexer :refer [lex]]))
-
-(def db (atom []))
-
-(defn read-input [input]
-  (str/split input #"\s+|\n|\t|\n|;"))
+  (:require [cstack.lexer :refer [lex]]
+            [cstack.db :refer [insert-into create-table]]))
 
 (defn start-message []
   (println "SQLite clone v.0.0.1")
@@ -13,42 +8,18 @@
   (println "Connected to a transient in-memory database")
   (println "Use \".open FILENAME\" to re-open a persistent database."))
 
-(defrecord Row [^Integer id ^String username ^String email])
-
 (defn convert [value type]
   (case type
-    :number (Integer/parseInt value)
+    :number (try
+              (Integer/parseInt value)
+              (catch Exception _ nil))
     value))
-
-(defn insert-row
-  [expr]
-  (apply ->Row
-         (mapv
-          (fn [v] (convert (v :token) (v :type)))
-          (filter #(not= (-> % :type) :symbol) expr))))
 
 (defn expect-token
   [token expected]
   (= (token :token) expected))
 
-(comment
-
-  (def v (lex "insert into db values (1, 'user', 'user@clj.org')"))
-  (insert-row (subvec v 4))
-  (def -vs (subvec v 4))
-
-  (def sql-str1 (lex   "select id, username from places where locality=\"los angeles\";"))
-  (second (split-with #(not= (-> % :token) "values") v))
-
-  (split-with #(not= (-> % :token) "from") (rest sql-str1))
-  (-> sql-str1 first :token)
-
-  (apply ->Row
-         (mapv
-          (fn [v] (convert (v :token) (v :type)))
-          (filter #(not= (-> % :type) :symbol) -vs))))
-
-(defn insert-fn
+(defn parse-insert
   "
     INSERT
     INTO
@@ -57,17 +28,24 @@
   "
   [input]
   (if (expect-token (input 1) "into")
-    (if (expect-token (input 2) "db") ; table-name
+    (if (= ((input 2) :type) :identifier) ; table-name
       (if (expect-token (input 3) "values")
-        (insert-row (subvec input 4))
+        {:table (-> (input 2) :token keyword)
+         :values
+         (mapv
+          (fn [v] (convert (v :token) (v :type)))
+          (filter #(not= (-> % :type) :symbol)
+                  (take-while #(not= (-> % :token) ")")
+                              (rest
+                               (drop-while #(not= (-> % :token) "(")
+                                           input)))))}
         (prn "Expected Values"))
       (prn "Table doesn't exist"))
     (prn "Expected INTO statement")))
 
-(insert-fn
- (lex "insert into db values (1, user, user@clj.org)"))
+(parse-insert (lex "insert into db values (1, 'user', 'user@clj.org');"))
 
-(defn select-fn
+(defn parse-select
   "
     SELECT
     $expression [, ...]
@@ -75,16 +53,20 @@
     $table-name 
   "
   [input]
+  ; "TODO: validation"
   (let [[select-expr from-expr]
         (split-with #(not= (-> % :token) "from") (rest input))]
-    {:table (second from-expr)
-     :expression (vec select-expr)}))
+    {:table (-> from-expr second :token keyword)
+     :expression (mapv :token
+                       (filter #(not= (-> % :token) ",") select-expr))}))
 
-(select-fn (lex "select id, username from customer"))
+(parse-select (lex "select id, *; username from customer"))
 
-(defn create-table [input]
-  (partition 2 (filter #(not= (-> % :type) :symbol) input)))
-(defn create-fn
+(defn coldef [token]
+  {:name (first token)
+   :datatype (second token)})
+
+(defn parse-create
   "
     CREATE
     $table-name
@@ -93,39 +75,65 @@
     ) 
   "
   [input]
-  (if (expect-token (input 1) "table") 
-    (if (expect-token (input 2) "customer") ; table-name
-      (create-table (subvec input 3))
-      (prn "Expected Values"))
-    (prn "Expected table name: ")))
+  ; "TODO: Validation"
+  (if (expect-token (input 1) "table")
+    (if (=  (-> input (get 2) :type)  :identifier) ; table-name
+      {:name (-> (input 2) :token keyword)
+       :cols
+       (mapv (fn [t]
+               {:name (first t) :datatype (second t)})
+             (partition 2
+                        (mapv :token
+                              (filter #(not= (-> % :type) :symbol) (subvec input 3)))))}
+      (prn "Expected table name"))
+    (prn "Syntax error")))
 
-(create-fn (lex "create table customer (id int, name text, email text);"))
+(parse-create
+ (lex "create table customer (id int, name text, email text);"))
 
-(def command
-  {:select select-fn
-   :insert insert-fn
-   :create create-fn})
+(defn meta? [tokens]
+  (= (-> tokens first :token) "."))
+
+(defn execute-meta [meta-cmd]
+  (print meta-cmd)
+  (case meta-cmd
+    "exit" (print "bye!")
+    "quit" (print "bye!")
+    (print "unrecognised command")))
 
 (defn -main []
   (start-message)
   (loop [input (lex (read-line))]
     (print "sqlite> ")
     (let [statement (first input)]
-      (if (or (= statement ".exit") (= statement ".quit")) (print "bye!")
-          (do
-            (condp contains? (keyword statement)
-              command (println (((keyword statement) command) input))
-              (println "Unrecognized command " input))
-            (recur (lex (read-line))))))))
+      (if (meta? input)
+        (cond
+          (nil? (second input)) (do
+                                  (println "Unrecognized command " input)
+                                  (recur (lex (read-line))))
+          (= "exit" (-> input second :token)) (println "bye!")
+          :else (do
+                  (println "Unrecognized command " input)
+                  (recur (lex (read-line)))))
 
-((command :select) 1)
-
-(comment
-; (def tokens
-;   (read-string (str \[ "select * from customer where id = 1" \])))
-; 
-; (read-input "select *  from customer where id = 1;")
-; (read-input ".quit")
-  )
+        (do
+          (case (statement :token)
+            "select" (println (parse-select input))
+            "insert" (println (parse-insert input))
+            "create" (println (parse-create input))
+            (println "Unrecognized command " input))
+          (recur (lex (read-line))))))))
 
 (-main)
+
+(comment
+
+  (def v (lex "insert into * db values (1.03, 'user', 'user@clj.org');"))
+
+  (def query (lex "create table customer (id int, name text, email text);"))
+
+  (def sql-str1 (lex   "select id, username from places where locality=\"los angeles\";"))
+
+  (second (split-with #(not= (-> % :token) "values") v))
+  (split-with #(not= (-> % :token) "from") (rest sql-str1))
+  (-> sql-str1 first :token))

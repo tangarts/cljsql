@@ -1,7 +1,7 @@
 (ns cstack.lexer)
 
 (def meta-command
-  {:exit ".exit" :help ".help" :open ".open" :quit ".quit"})
+  #{".exit" ".help" ".open" ".quit"})
 
 (def keywords
   #{"select" "from" "as" "table" "create" "insert" "into" "values" "int" "text"})
@@ -37,7 +37,7 @@
   (let [c (subs token 0 1)]
     (cond
       (keywords token) :keyword
-      (letter? c)  :word
+      (letter? c)  :identifier
       (digit? c)   :number
       (asymbol? c) :symbol
       (astring? c) :string
@@ -47,7 +47,6 @@
   {:token token
    :type (what-type token)})
 
-(asymbol? "1- >= 3")
-
 (defn lex [sql-str]
   (mapv typer (map first (re-seq REGEX sql-str))))
+
