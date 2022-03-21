@@ -41,8 +41,4 @@
   (insert-into {:table :customer, :values [2 "'user2'" "'user2@clj.org'"]})  
   (insert-into {:table :customer, :values [3 "'user3'" "'user3@clj.org'"]})  
   @db
-  )
-
-(defn results []
-  {:cols {:type nil :name nil}
-   :rows nil})
+  ))
