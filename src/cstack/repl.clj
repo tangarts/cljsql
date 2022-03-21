@@ -9,6 +9,8 @@
   (println "Use \".open FILENAME\" to re-open a persistent database."))
 
 (defn convert [value type]
+  ; TODO: parse-expr {:literal token :kind literalKind}
+  ; TODO: parse-expr {:fn token :kind fnKind}
   (case type
     :number (try
               (Integer/parseInt value)
@@ -18,6 +20,23 @@
 (defn expect-token
   [token expected]
   (= (token :token) expected))
+
+; parse-token
+; (= (token :type ) kind)
+
+; parse-expression looks for tokens separated by a comma until delimeter is found
+
+(defn parse-exprs
+  ^{:post [(every? #(not= :symbol (-> % :type)) %)]}
+  [tokens delim]
+  (filter #(not= (-> % :token) ",")
+          (take-while #(not= (-> % :token) delim)
+                      tokens)))
+
+(parse-exprs (rest
+              (drop-while #(not= (-> % :token) "(")
+                          (lex "insert into db values (1, 'user', 'user@clj.org');")))
+             ")")
 
 (defn parse-insert
   "
@@ -34,16 +53,16 @@
          :values
          (mapv
           (fn [v] (convert (v :token) (v :type)))
-          (filter #(not= (-> % :type) :symbol)
-                  (take-while #(not= (-> % :token) ")")
-                              (rest
-                               (drop-while #(not= (-> % :token) "(")
-                                           input)))))}
-        (prn "Expected Values"))
-      (prn "Table doesn't exist"))
-    (prn "Expected INTO statement")))
+          (parse-exprs (rest
+                         (drop-while #(not= (-> % :token) "(")
+                                     input))
+                       ")"))}
+        (throw (Exception. "Expected values keyword")))
+      (throw (Exception. "Expected table names")))
+    (throw (Exception. "Expected into"))))
 
 (parse-insert (lex "insert into db values (1, 'user', 'user@clj.org');"))
+(parse-insert (lex "insert into db value (1, 'user', 'user@clj.org');"))
 
 (defn parse-select
   "
@@ -54,17 +73,18 @@
   "
   [input]
   ; "TODO: validation"
-  (let [[select-expr from-expr]
+  ; some validation in parse exprs
+  (let [[_ from-expr]
         (split-with #(not= (-> % :token) "from") (rest input))]
-    {:table (-> from-expr second :token keyword)
+    (if (not= '() from-expr)
+     {:table (-> from-expr second :token keyword)
      :expression (mapv :token
-                       (filter #(not= (-> % :token) ",") select-expr))}))
+                       (parse-exprs (rest input) "from"))}         
+              (throw (Exception. "Expected FROM clause")))))
 
-(parse-select (lex "select id, *; username from customer"))
 
-(defn coldef [token]
-  {:name (first token)
-   :datatype (second token)})
+(parse-exprs (lex "select id, username customer") "from")
+(parse-select (lex "select id, username from customer"))
 
 (defn parse-create
   "
@@ -84,12 +104,16 @@
                {:name (first t) :datatype (second t)})
              (partition 2
                         (mapv :token
-                              (filter #(not= (-> % :type) :symbol) (subvec input 3)))))}
-      (prn "Expected table name"))
-    (prn "Syntax error")))
+                              (parse-exprs (subvec input 4) ")"))))}
+      (throw (Exception. "Expected table name")))
+    (throw (Exception. "Syntax error"))))
 
+(parse-exprs (lex "id int, name text, email text);") ")")
 (parse-create
  (lex "create table customer (id int, name text, email text);"))
+
+(parse-create
+ (lex "create table customer (id int, name text, email tex);"))
 
 (defn meta? [tokens]
   (= (-> tokens first :token) "."))
@@ -124,7 +148,7 @@
             (println "Unrecognized command " input))
           (recur (lex (read-line))))))))
 
-(-main)
+; (-main)
 
 (comment
 
