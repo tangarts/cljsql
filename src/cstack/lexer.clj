@@ -1,4 +1,5 @@
-(ns cstack.lexer)
+(ns cstack.lexer
+  (:require [clojure.string :as str]))
 
 (def meta-command
   #{".exit" ".help" ".open" ".quit"})
@@ -43,10 +44,29 @@
       (astring? c) :string
       :else (throw (IllegalArgumentException. (str "Don't know type of token:" token))))))
 
+
 (defn typer [token]
-  {:token token
-   :type (what-type token)})
+  {:token (str/lower-case token)
+   :col (count token)
+   :type (what-type token)
+  })
 
 (defn lex [sql-str]
-  (mapv typer (map first (re-seq REGEX sql-str))))
+  (let [tokens (map typer (map first (re-seq REGEX sql-str)))]
+  (mapv #(assoc %1 :col %2)
+       tokens
+       (reductions + 0 (map #(-> % :token count) tokens)))))
 
+(comment
+
+  (lex "insert into * db values (1.03, 'user', 'user@clj.org');")
+  (def query (lex "create table customer (id int, name text, email text);"))
+  (def sql-str "select id, username from places where locality=\"los angeles\";")
+  (re-seq REGEX sql-str)
+
+  
+  (lex "INSERT INTO users VALUES ('Stephen', 16);")
+  (lex "SELECT age + 2, name FROM users WHERE age = 23;")
+  (lex "SELECT name FROM users;")
+  (lex "create table customer (id int, name text, email tex);")
+  (lex "id int, name text, email text);"))
