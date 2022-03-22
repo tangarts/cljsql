@@ -41,8 +41,7 @@
                        ")"))}
         (println "Expected values keyword"))
       (println "Expected table names"))
-    (println "Expected into"))
-  {})
+    (println "Expected into")))
 
 (parse-insert [{:token "insert", :type :keyword}
                {:token "into", :type :keyword}
@@ -73,24 +72,6 @@
                          (parse-exprs (rest input) "from"))}
       (println  "Expected FROM clause"))))
 
-(parse-select [{:token "select", :type :keyword}
-               {:token "id", :type :identifier}
-               {:token "from", :type :keyword}
-               {:token "t", :type :identifier}])
-
-(parse-exprs  [{:token "select", :type :keyword}
-               {:token "id", :type :identifier}
-               {:token ",", :type :symbol}
-               {:token "username", :type :identifier}
-               {:token "customer", :type :identifier}] "from")
-
-(parse-select [{:token "select", :type :keyword}
-               {:token "id", :type :identifier}
-               {:token ",", :type :symbol}
-               {:token "username", :type :identifier}
-               {:token "from", :type :keyword}
-               {:token "customer", :type :identifier}])
-
 (defn parse-create
   "
     CREATE
@@ -112,6 +93,26 @@
                               (parse-exprs (subvec input 4) ")"))))}
       (println "Expected table name"))
     (println  "Syntax error")))
+
+(parse-select [{:token "select", :type :keyword}
+               {:token "id", :type :identifier}
+               {:token "from", :type :keyword}
+               {:token "t", :type :identifier}])
+
+(parse-exprs  [{:token "select", :type :keyword}
+               {:token "id", :type :identifier}
+               {:token ",", :type :symbol}
+               {:token "username", :type :identifier}
+               {:token "customer", :type :identifier}] "from")
+
+(parse-select [{:token "select", :type :keyword}
+               {:token "id", :type :identifier}
+               {:token ",", :type :symbol}
+               {:token "username", :type :identifier}
+               {:token "from", :type :keyword}
+               {:token "customer", :type :identifier}])
+
+
 
 (parse-exprs [{:token "id", :type :identifier}
               {:token "int", :type :keyword}

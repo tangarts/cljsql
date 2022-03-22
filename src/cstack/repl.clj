@@ -15,7 +15,7 @@
   (loop [tokens (lex (read-line))]
     (print "sqlite> ")
     (let [statement (first tokens)]
-      (if ((-> tokens first :token) ".")
+      (if (= (-> tokens first :token) ".")
         (if (or (= "exit" (-> tokens second :token))
                 (= "quit" (-> tokens second :token))) (println "bye!")
            (do
@@ -31,6 +31,3 @@
           (recur (lex (read-line))))))))
 
 (-main)
-
-
-

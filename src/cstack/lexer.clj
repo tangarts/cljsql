@@ -60,6 +60,7 @@
 (comment
 
   (lex "insert into * db values (1.03, 'user', 'user@clj.org');")
+  (lex (read-line))
   (def query (lex "create table customer (id int, name text, email text);"))
   (def sql-str "select id, username from places where locality=\"los angeles\";")
   (re-seq REGEX sql-str)
