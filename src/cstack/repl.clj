@@ -30,7 +30,4 @@
             (println "Unrecognized command " tokens))
           (recur (lex (read-line))))))))
 
-; (-main)
-
-
-
+(-main)
