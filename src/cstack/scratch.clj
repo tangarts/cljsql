@@ -1,5 +1,6 @@
 (ns cljsexp-simple.core
-  (:require [clojure.pprint :as p]))
+  (:require [clojure.pprint :as p]
+            [clojure.walk :refer [postwalk]]))
 
 (def funcs {"prn" println
             "+" +})
@@ -153,13 +154,22 @@
     (p/pprint result)
     result))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 (def code ["(id > 10 and id < 3)"])
 (def t (tokenise {:code code, :line 0, :col 0, :val :none, :token :none}))
-(p/pprint t)
-(p/pprint
- (parseExpression (first t) (rest t)))
 
-(defn binding-power [token]
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+; {:kind :binary
+;  :expr {:a {:token "id" :type :identifier}
+;         :b {:token "1" :type :number} 
+;         :op {:token :type :symbol}}}
+
+
+
+(defn bpower [token]
   (case (token :type)
     :keyword (case (token :token)
                ("and" "or") 1
@@ -169,40 +179,45 @@
               0)
     0))
 
-(binding-power {:token "where" :type :keyword})
+(def tok [
+          {:token "id", :type :identifier}
+          {:token "=", :type :symbol}
+          {:token "1", :type :number}
+          {:token "and" :type :symbol}
+          {:token "2", :type :identifier}
+          {:token "+", :type :symbol}
+          {:token "2", :type :number} ])
 
-(def tokens [{:token "id", :type :identifier}
-             {:token "=", :type :symbol}
-             {:token "1", :type :number}
+(def precedence '{* 0, / 0 + 1, - 1})
 
-             {:token "and" :type :symbol}
+(defn node [x op y]
+  {:kind :binary
+   :expr {:a x :op op :b y}})
 
-             {:token "2", :type :identifier}
-             {:token "+", :type :symbol}
-             {:token "2", :type :number}])
+(defn order-ops
+  "((A x B) y C) or (A x (B y C)) depending on precedence of x and y"
+  [[A x B y C & more]]
+  (let [ret (if (<=  (bpower x) (bpower y))
+              (list (list A x B) y C)
+              (list A x (list B y C)))]
+    (if more
+      (recur (concat ret more))
+      ret)))
 
-(defn expr-bp [token tokens]
-  (if (= (token :type) :symbol) (println "Bad token")
-      (loop [expressions []
-             [loopToken & loopTokens] tokens
-             min-bp 0]
-        (cond
-          (or (nil? token) (= '() token))
-          (throw (Exception. (str "EOF waiting for :rparen")))
+(defn add-parens
+  "Tree walk to add parens.  All lists are length 3 afterwards."
+  [s]
+  (postwalk
+   #(if (seq? %)
+      (let [c (count %)]
+        (cond (even? c) (throw (Exception. "Must be an odd number of forms"))
+              (= c 1) (first %)
+              (= c 3) %
+              (>= c 5) (order-ops %)))
+      %)
+   s))
 
-          (< (binding-power token) min-bp) 
-          {:expr {:val :symbol
-                  :expressions expressions}
-           :tokens loopTokens}
+(add-parens (subvec tok 0 5))
 
-          ; (= :rparen (loopToken :token))
-          ; {:expr {:val :symbol
-          ;         :expressions expressions}
-          ;  :tokens loopTokens}
-
-          :else (let [r (parseExpression loopToken loopTokens)]
-                  (recur (conj expressions (:expr r))
-                         (:tokens r)
-                         (binding-power token)))))))
-
-(expr-bp {:token "2", :type :number} [])
+(p/pprint
+ (-> '(1 + 2 * 3) add-parens))
