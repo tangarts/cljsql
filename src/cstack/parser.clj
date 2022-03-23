@@ -119,10 +119,29 @@
 ;         :b {:token "1" :type :number} 
 ;         :op {:token :type :symbol}}}
 
-(partition 2 (rest '({:token "id", :type :identifier}
-                     {:token "=", :type :symbol}
-                     {:token "1", :type :number}
-                     {:token ";", :type :symbol})))
+(defn node [x op y]
+  {:kind :binary
+   :expr {:a x :op op :b y}})
+
+
+(defn infix [x & expr] 
+  (reduce (fn [acc [oper y]] (oper acc y))
+           x (partition 2 expr)))
+
+(infix 9 + 3 * 4)
+
+
+;(ifx [{:token "id", :type :identifier}
+;      {:token "=", :type :symbol}
+;      {:token "1", :type :number}])
+;        {:token "and" :type :symbol}]
+;
+;       {:token "2", :type :identifier}
+;       {:token "+", :type :symbol}
+;       {:token "2", :type :number})
+
+
+
 (defn parse-create
   "
     CREATE
