@@ -94,46 +94,11 @@
       (println "Expected table name"))
     (println  "Syntax error")))
 
-(parse-select [{:token "select", :type :keyword}
-               {:token "id", :type :identifier}
-               {:token "from", :type :keyword}
-               {:token "t", :type :identifier}])
 
-(parse-exprs  [{:token "select", :type :keyword}
-               {:token "id", :type :identifier}
-               {:token ",", :type :symbol}
-               {:token "username", :type :identifier}
-               {:token "customer", :type :identifier}] "from")
-
-(parse-select [{:token "select", :type :keyword}
-               {:token "id", :type :identifier}
-               {:token ",", :type :symbol}
-               {:token "username", :type :identifier}
-               {:token "from", :type :keyword}
-               {:token "customer", :type :identifier}])
-
-
-
-(parse-exprs [{:token "id", :type :identifier}
-              {:token "int", :type :keyword}
-              {:token ",", :type :symbol}
-              {:token "name", :type :identifier}
-              {:token "text", :type :keyword}
-              {:token ",", :type :symbol}
-              {:token "email", :type :identifier}
-              {:token "text", :type :keyword}
-              {:token ")", :type :symbol}
-              {:token ";", :type :symbol}] ")")
-
-(parse-create
- [{:token "create", :type :keyword}
-  {:token "table", :type :keyword}
-  {:token "customer", :type :identifier}
-  {:token "(", :type :symbol}
-  {:token "id", :type :identifier}
-  {:token "int", :type :keyword}
-  {:token ",", :type :symbol}
-  {:token "name", :type :identifier}
-  {:token "text", :type :keyword}
-  {:token ")", :type :symbol}
-  {:token ";", :type :symbol}])
+(defn parse-statement
+  [tokens]
+  (case (get (first tokens) :token)
+            "select" {:kind :select :statement (parse-select tokens)}
+            "insert" {:kind :insert :statement (parse-insert tokens)}
+            "create" {:kind :create :statement (parse-create tokens)}
+            nil))
