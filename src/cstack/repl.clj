@@ -12,15 +12,17 @@
 
 (defn -main []
   (start-message)
-  (loop [tokens (lex (read-line))]
+  (loop []
     (print "sqlite> ")
-    (let [statement (first tokens)]
+    (flush)
+    (let [tokens (lex (read-line))
+          statement (first tokens)]
       (if (= (-> tokens first :token) ".")
         (if (or (= "exit" (-> tokens second :token))
                 (= "quit" (-> tokens second :token))) (println "bye!")
            (do
                   (println "Unrecognized command" (-> tokens second :token))
-                  (recur (lex (read-line)))))
+                  (recur)))
 
         (do
           (case (get statement :token)
@@ -28,6 +30,6 @@
             "insert" (println (insert-into (parse-insert tokens)))
             "create" (println (create-table (parse-create tokens)))
             (println "Unrecognized command " tokens))
-          (recur (lex (read-line))))))))
+          (recur ))))))
 
 (-main)
