@@ -23,9 +23,9 @@
 
 (defn select
   [statement]
-  (->> (get @db (statement :table))
+  (->> (get @db (statement :from))
        :rows
-       (map #(select-keys % (statement :expression)))))
+       (map #(select-keys % (statement :item)))))
 
 (comment
   

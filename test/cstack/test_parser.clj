@@ -8,7 +8,7 @@
                    {:token "id", :type :identifier}
                    {:token "from", :type :keyword}
                    {:token "t", :type :identifier}])
-    {:table :t, :expression [:id]}
+    {:from :t, :item [:id]}
 
     (parse-select [{:token "select", :type :keyword}
                    {:token "id", :type :identifier}
@@ -16,7 +16,7 @@
                    {:token "username", :type :identifier}
                    {:token "from", :type :keyword}
                    {:token "customer", :type :identifier}])
-    {:table :customer, :expression [:id :username]}))
+    {:from :customer, :item [:id :username]}))
 
 (deftest test-parse-create
   (are [x y] (= x y)

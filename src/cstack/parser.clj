@@ -61,17 +61,68 @@
     FROM
     $table-name 
   "
-  [input]
+  [tokens]
   ; "TODO: validation"
   ; some validation in parse exprs
-  (let [[_ from-expr]
-        (split-with #(not= (-> % :token) "from") (rest input))]
+  (let [[select-expr from-expr]
+        (split-with #(not= (-> % :token) "from") (rest tokens))
+        where-expr (drop-while #(not= (-> % :token) "where") from-expr)]
+    (println select-expr)
+    (println from-expr)
+    (println where-expr)
     (if (not= '() from-expr)
-      {:table (-> from-expr second :token keyword)
-       :expression (mapv #(-> % :token keyword)
-                         (parse-exprs (rest input) "from"))}
-      (println  "Expected FROM clause"))))
+      (if (= '() where-expr)
+        {:from (-> from-expr second :token keyword)
+         :item (mapv #(-> % :token keyword)
+                     (filter #(not= (-> % :token) ",")
+                             select-expr))}
+        {:from (-> from-expr second :token keyword)
+         :where where-expr
+         :item (mapv #(-> % :token keyword)
+                     (filter #(not= (-> % :token) ",")
+                             select-expr))})
 
+      {:from (-> from-expr second :token keyword)
+       :item (mapv #(-> % :token)
+                   (filter #(not= (-> % :type) :symbol)
+                           select-expr))})))
+
+(parse-select [{:token "select", :type :keyword}
+               {:token "1", :type :number}
+               {:token "+", :type :symbol}
+               {:token "1", :type :number}
+               {:token ";", :type :symbol}])
+
+(parse-select [{:token "select", :type :keyword}
+               {:token "id", :type :identifier}
+               {:token ",", :type :symbol}
+               {:token "name", :type :identifier}
+               {:token "from", :type :string}
+               {:token "t", :type :symbol}
+               {:token ";", :type :symbol}])
+
+(parse-select [{:token "select", :type :keyword}
+               {:token "id", :type :identifier}
+               {:token ",", :type :symbol}
+               {:token "name", :type :identifier}
+               {:token ",", :type :symbol}
+               {:token "from", :type :string}
+               {:token "t", :type :symbol}
+               {:token "where" :type :keyword}
+               {:token "id", :type :identifier}
+               {:token "=", :type :symbol}
+               {:token "1", :type :number}
+               {:token ";", :type :symbol}])
+
+; {:kind :binary
+;  :expr {:a {:token "id" :type :identifier}
+;         :b {:token "1" :type :number} 
+;         :op {:token :type :symbol}}}
+
+(partition 2 (rest '({:token "id", :type :identifier}
+                     {:token "=", :type :symbol}
+                     {:token "1", :type :number}
+                     {:token ";", :type :symbol})))
 (defn parse-create
   "
     CREATE
@@ -94,11 +145,10 @@
       (println "Expected table name"))
     (println  "Syntax error")))
 
-
 (defn parse-statement
   [tokens]
   (case (get (first tokens) :token)
-            "select" {:kind :select :statement (parse-select tokens)}
-            "insert" {:kind :insert :statement (parse-insert tokens)}
-            "create" {:kind :create :statement (parse-create tokens)}
-            nil))
+    "select" {:kind :select :statement (parse-select tokens)}
+    "insert" {:kind :insert :statement (parse-insert tokens)}
+    "create" {:kind :create :statement (parse-create tokens)}
+    nil))
