@@ -5,21 +5,21 @@
 (def db (atom {}))
 
 (defn insert-into
-  "adds a new record"
+  "Adds a new record"
   [statement]
   (println statement)
   (if (get @db (statement :table))
-    (swap! db update-in [(->> statement :table) :rows] 
-           conj (zipmap ((get @db (statement :table)) :cols) 
+    (swap! db update-in [(->> statement :table) :rows]
+           conj (zipmap ((get @db (statement :table)) :cols)
                         (statement :values)))
-      (println "Table does not exist")))
+    (println "Table does not exist")))
 
 (defn create-table
   ; TODO add column type validation, for now a table is a vector
   [statement]
   (let [dtypes (->> statement :cols (map :datatype) (mapv keyword))
         cols (->> statement :cols (map :name) (mapv keyword))]
-  (swap! db assoc (statement :name) {:cols cols :types dtypes :rows []})))
+    (swap! db assoc (statement :name) {:cols cols :types dtypes :rows []})))
 
 (defn select
   [statement]
@@ -28,31 +28,30 @@
        (map #(select-keys % (statement :item)))))
 
 (defn execute [statement]
-  (case (statement :kind)
-    :select (select (statement :statement))
-    :insert (insert-into (statement :statement))
-    :create (create-table (statement :statement))
-    nil))
+  (when (get statement :statement)
+    (case (get statement :kind)
+      :select (select (statement :statement))
+      :insert (insert-into (statement :statement))
+      :create (create-table (statement :statement))
+      (println "Unrecognized statement" (name (statement :kind))))))
 
 (comment
-  
-  @db
+
+  ; (map name (keys @db))
   (do
-  (reset! db {})
-  (create-table {:name :customer,
-                 :cols
-                 [{:name "id", :datatype "int"}
-                  {:name "name", :datatype "text"}
-                 {:name "email", :datatype "text"}]})
-  (create-table {:name :t
-                 :cols
-                 [{:name "i", :datatype "int"}
-                  {:name "a", :datatype "text"}
-                 ]})
-  @db
-  (insert-into {:table :customer, :values [1 "'user1'" "'user1@clj.org'"]})  
-  (insert-into {:table :customer, :values [2 "'user2'" "'user2@clj.org'"]})  
-  (insert-into {:table :customer, :values [3 "'user3'" "'user3@clj.org'"]})  
-  (insert-into {:table :t :values [1 "'3'"]})
-  @db
-  ))
+    (reset! db {})
+    (create-table {:name :customer,
+                   :cols
+                   [{:name "id", :datatype "int"}
+                    {:name "name", :datatype "text"}
+                    {:name "email", :datatype "text"}]})
+    (create-table {:name :t
+                   :cols
+                   [{:name "i", :datatype "int"}
+                    {:name "a", :datatype "text"}]})
+    @db
+    (insert-into {:table :customer, :values [1 "'user1'" "'user1@clj.org'"]})
+    (insert-into {:table :customer, :values [2 "'user2'" "'user2@clj.org'"]})
+    (insert-into {:table :customer, :values [3 "'user3'" "'user3@clj.org'"]})
+    (insert-into {:table :t :values [1 "'3'"]})
+    @db))

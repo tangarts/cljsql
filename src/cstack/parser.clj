@@ -84,62 +84,56 @@
                    (filter #(not= (-> % :type) :symbol)
                            select-expr))})))
 
-(comment 
-(parse-select [{:token "select", :type :keyword}
-               {:token "1", :type :number}
-               {:token "+", :type :symbol}
-               {:token "1", :type :number}
-               {:token ";", :type :symbol}])
+(comment
+  (parse-select [{:token "select", :type :keyword}
+                 {:token "1", :type :number}
+                 {:token "+", :type :symbol}
+                 {:token "1", :type :number}
+                 {:token ";", :type :symbol}])
 
-(parse-select [{:token "select", :type :keyword}
-               {:token "id", :type :identifier}
-               {:token ",", :type :symbol}
-               {:token "name", :type :identifier}
-               {:token "from", :type :string}
-               {:token "t", :type :symbol}
-               {:token ";", :type :symbol}])
+  (parse-select [{:token "select", :type :keyword}
+                 {:token "id", :type :identifier}
+                 {:token ",", :type :symbol}
+                 {:token "name", :type :identifier}
+                 {:token "from", :type :string}
+                 {:token "t", :type :symbol}
+                 {:token ";", :type :symbol}])
 
-(parse-select [{:token "select", :type :keyword}
-               {:token "id", :type :identifier}
-               {:token ",", :type :symbol}
-               {:token "name", :type :identifier}
-               {:token ",", :type :symbol}
-               {:token "from", :type :string}
-               {:token "t", :type :symbol}
-               {:token "where" :type :keyword}
-               {:token "id", :type :identifier}
-               {:token "=", :type :symbol}
-               {:token "1", :type :number}
-               {:token ";", :type :symbol}])
+  (parse-select [{:token "select", :type :keyword}
+                 {:token "id", :type :identifier}
+                 {:token ",", :type :symbol}
+                 {:token "name", :type :identifier}
+                 {:token ",", :type :symbol}
+                 {:token "from", :type :string}
+                 {:token "t", :type :symbol}
+                 {:token "where" :type :keyword}
+                 {:token "id", :type :identifier}
+                 {:token "=", :type :symbol}
+                 {:token "1", :type :number}
+                 {:token ";", :type :symbol}])
 
 ; {:kind :binary
 ;  :expr {:a {:token "id" :type :identifier}
 ;         :b {:token "1" :type :number} 
 ;         :op {:token :type :symbol}}}
 
-(defn node [x op y]
-  {:kind :binary
-   :expr {:a x :op op :b y}})
+  (defn node [x op y]
+    {:kind :binary
+     :expr {:a x :op op :b y}})
 
-
-(defn infix [x & expr] 
-  (reduce (fn [acc [oper y]] (oper acc y))
-           x (partition 2 expr)))
-
-
+  (defn infix [x & expr]
+    (reduce (fn [acc [oper y]] (oper acc y))
+            x (partition 2 expr)))
 
 ;(ifx [{:token "id", :type :identifier}
 ;      {:token "=", :type :symbol}
-;      {:token "1", :type :number}])
-;        {:token "and" :type :symbol}]
+;      {:token "1", :type :number}
+;        {:token "and" :type :symbol}
 ;
 ;       {:token "2", :type :identifier}
 ;       {:token "+", :type :symbol}
-;       {:token "2", :type :number})
-
-
-)
-
+;       {:token "2", :type :number}])
+  )
 (defn parse-create
   "
     CREATE

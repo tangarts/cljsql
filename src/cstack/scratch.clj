@@ -156,22 +156,53 @@
 (def code ["(id > 10 and id < 3)"])
 (def t (tokenise {:code code, :line 0, :col 0, :val :none, :token :none}))
 (p/pprint t)
-(p/pprint 
-  (parseExpression (first t) (rest t)))
-        
+(p/pprint
+ (parseExpression (first t) (rest t)))
 
+(defn binding-power [token]
+  (case (token :type)
+    :keyword (case (token :token)
+               ("and" "or") 1
+               0)
+    :symbol (case (token :token)
+              ("=" "<>" "||" "+") 3
+              0)
+    0))
 
-;;;;;;;;;;;;;;;;;;;;;;;
+(binding-power {:token "where" :type :keyword})
 
-(declare eval)
+(def tokens [{:token "id", :type :identifier}
+             {:token "=", :type :symbol}
+             {:token "1", :type :number}
 
-(defmulti run (fn [x] (:type x)))
-(defmethod run :string [e] (:val e))
-(defmethod run :number [e] (:val e))
-(defmethod run :name [e] (:val e))
-(defmethod run :vector [e] (vec (map run (:expressions e))))
-(defmethod run :list [e] (let [f (run (first (:expressions e)))
-                               args (map run (rest (:expressions e)))]
-                           (apply (get funcs f) args)))
-(defmethod run :default [e] (println "unknown: " e))
+             {:token "and" :type :symbol}
 
+             {:token "2", :type :identifier}
+             {:token "+", :type :symbol}
+             {:token "2", :type :number}])
+
+(defn expr-bp [token tokens]
+  (if (= (token :type) :symbol) (println "Bad token")
+      (loop [expressions []
+             [loopToken & loopTokens] tokens
+             min-bp 0]
+        (cond
+          (or (nil? token) (= '() token))
+          (throw (Exception. (str "EOF waiting for :rparen")))
+
+          (< (binding-power token) min-bp) 
+          {:expr {:val :symbol
+                  :expressions expressions}
+           :tokens loopTokens}
+
+          ; (= :rparen (loopToken :token))
+          ; {:expr {:val :symbol
+          ;         :expressions expressions}
+          ;  :tokens loopTokens}
+
+          :else (let [r (parseExpression loopToken loopTokens)]
+                  (recur (conj expressions (:expr r))
+                         (:tokens r)
+                         (binding-power token)))))))
+
+(expr-bp {:token "2", :type :number} [])
