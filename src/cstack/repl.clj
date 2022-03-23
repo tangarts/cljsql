@@ -30,6 +30,6 @@
             "insert" (println (insert-into (parse-insert tokens)))
             "create" (println (create-table (parse-create tokens)))
             (println "Unrecognized command " tokens))
-          (recur ))))))
+          (recur))))))
 
 (-main)
