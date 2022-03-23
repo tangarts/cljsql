@@ -27,6 +27,13 @@
        :rows
        (map #(select-keys % (statement :item)))))
 
+(defn execute [statement]
+  (case (statement :kind)
+    :select (select (statement :statement))
+    :insert (insert-into (statement :statement))
+    :create (create-table (statement :statement))
+    nil))
+
 (comment
   
   @db

@@ -67,9 +67,6 @@
   (let [[select-expr from-expr]
         (split-with #(not= (-> % :token) "from") (rest tokens))
         where-expr (drop-while #(not= (-> % :token) "where") from-expr)]
-    (println select-expr)
-    (println from-expr)
-    (println where-expr)
     (if (not= '() from-expr)
       (if (= '() where-expr)
         {:from (-> from-expr second :token keyword)
@@ -87,6 +84,7 @@
                    (filter #(not= (-> % :type) :symbol)
                            select-expr))})))
 
+(comment 
 (parse-select [{:token "select", :type :keyword}
                {:token "1", :type :number}
                {:token "+", :type :symbol}
@@ -128,7 +126,6 @@
   (reduce (fn [acc [oper y]] (oper acc y))
            x (partition 2 expr)))
 
-(infix 9 + 3 * 4)
 
 
 ;(ifx [{:token "id", :type :identifier}
@@ -141,6 +138,7 @@
 ;       {:token "2", :type :number})
 
 
+)
 
 (defn parse-create
   "
@@ -170,4 +168,4 @@
     "select" {:kind :select :statement (parse-select tokens)}
     "insert" {:kind :insert :statement (parse-insert tokens)}
     "create" {:kind :create :statement (parse-create tokens)}
-    nil))
+    {:kind (-> tokens first :token keyword) :statement nil}))

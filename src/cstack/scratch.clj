@@ -153,8 +153,11 @@
     (p/pprint result)
     result))
 
-(def code ["(and (= 1 1) (> 10 2))"])
-(p/pprint (tokenise {:code code, :line 0, :col 0, :val :none, :token :none}))
+(def code ["(id > 10 and id < 3)"])
+(def t (tokenise {:code code, :line 0, :col 0, :val :none, :token :none}))
+(p/pprint t)
+(p/pprint 
+  (parseExpression (first t) (rest t)))
         
 
 
