@@ -156,7 +156,7 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(def code ["(1 + (2 * 3))"])
+(def code ["(and (< 10 1) (> 2 3))"])
 (def t (tokenise {:code code, :line 0, :col 0, :val :none, :token :none}))
 (p/pprint 
   (parseAll t))

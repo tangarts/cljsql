@@ -1,5 +1,16 @@
 (ns cstack.pratt)
 
+(def ^:dynamic *verbose* false)
+
+(defmacro printfv
+  [fmt & args]
+  `(when *verbose*
+     (printf ~fmt ~@args)))
+
+(defmacro with-verbose
+  [& body]
+  `(binding [*verbose* true] ~@body))
+
 ;;; function parse(tokens):
 ;    firstToken = tokens.consume()
 ;
@@ -30,44 +41,83 @@
 
 (def op #{'+ '- '* '/})
 (op '+)
-(if (op '-) "in" "out")
 
-(def precedence '{* 0, / 0 + 1, - 1})
+(def precedence '{* 3, / 3 + 1, - 1})
 
 (declare parse)
 (defn- -parse [& tokens]
   (let
    [[t tn] tokens]
     (if
-      (nil? tn) (first t)
-      (loop [[t tn & ts] tokens
-             acc {:kind :binary
-                          :expression []}]
-        (println "t:" t)
-        (println "tn:" tn)
-        (println "ts:" ts)
-        (println "acc: " acc)
-        (cond
-          (nil? tn) acc
-          (number? t) (recur ts (update acc :expression 
-                                        conj {:op tn
-                                           :left t
-                                           :right (-parse ts)})))))))
+     (nil? tn) (first t)
+     (loop [[t tn & ts] tokens
+            acc t
+            minbp 0]
+       (println "t:" t)
+       (println "tn:" tn)
+       (println "ts:" ts)
+       (println "acc: " acc)
+       (cond
+         (nil? tn) {:kind :binary
+                    :expressions acc}
+         ;  (number? t) (recur ts (update acc :expression 
+         ;                                conj {:op tn
+         ;                                   :left t
+         ;                                   :right (-parse ts)}))
+         (<= (precedence tn) minbp)
+         {:kind :binary :expressions acc}
 
-(parse [3 '* 2 '+ 1])
+         (op tn)
+         (let [r (-parse ts)]
+           (println "r:" r)
+           (recur ts (cons tn ; {:op tn :left t :right (-parse ts)})
+                           (list acc r))
+                  (inc (precedence tn)))))))))
+
+(defn multi [& tokens]
+  (let [[t tn] tokens]
+    (list t tn)))
 
 (defn parse [tokens]
-  ;(reduce #(assoc %1 :right %2) )
-  (apply -parse tokens))
+  (let [t (first tokens) 
+        tn (rest tokens)]
+    (if
+     (nil? tn) t
+     (loop [[t tn & ts] tokens
+            acc t
+            minbp 0]
+       (println "t:" t)
+       (println "tn:" tn)
+       (println "ts:" ts)
+       (println "acc: " acc)
+       (cond
+         (nil? tn) {:kind :binary
+                    :expressions acc}
 
-(def maps [{:op '*, :left 4, :right 1} 
-           {:op '+, :left 1, :right 2} 
+        (<= (precedence tn) minbp)
+         {:kind :binary :expressions acc}
+
+         (op tn)
+         (let [r (:expressions (parse ts))]
+           (println "r:" r)
+           (recur ts (cons tn ; {:op tn :left t :right (-parse ts)})
+                           (list acc r))
+                  (inc (precedence tn)))))))))
+
+(parse '(1))
+(parse '(1 * 2))
+(parse '(3 * 2 + 1))
+(parse [1 '+ 2 '* 3])
+(parse '(a + b * c * d + e))
+(parse '(2 * 3))
+
+(def maps [{:op '*, :left 4, :right 1}
+           {:op '+, :left 1, :right 2}
            {:op '*, :left 2, :right 3}])
 
 (-> (first maps)
     (assoc-in (into [] (repeat 1 :right)) (get maps 1))
     (assoc-in (into [] (repeat 2 :right)) (get maps 2)))
-
 
 (defn infix [& exprs]
   (loop [[x & xs] exprs
