@@ -156,18 +156,16 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(def code ["(id > 10 and id < 3)"])
+(def code ["(1 + (2 * 3))"])
 (def t (tokenise {:code code, :line 0, :col 0, :val :none, :token :none}))
-
-
+(p/pprint 
+  (parseAll t))
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ; {:kind :binary
 ;  :expr {:a {:token "id" :type :identifier}
 ;         :b {:token "1" :type :number} 
 ;         :op {:token :type :symbol}}}
-
-
 
 (defn bpower [token]
   (case (token :type)
@@ -179,14 +177,13 @@
               0)
     0))
 
-(def tok [
-          {:token "id", :type :identifier}
+(def tok [{:token "id", :type :identifier}
           {:token "=", :type :symbol}
           {:token "1", :type :number}
           {:token "and" :type :symbol}
           {:token "2", :type :identifier}
           {:token "+", :type :symbol}
-          {:token "2", :type :number} ])
+          {:token "2", :type :number}])
 
 (def precedence '{* 0, / 0 + 1, - 1})
 
@@ -197,7 +194,7 @@
 (defn order-ops
   "((A x B) y C) or (A x (B y C)) depending on precedence of x and y"
   [[A x B y C & more]]
-  (let [ret (if (<=  (bpower x) (bpower y))
+  (let [ret (if (<=  (precedence x) (precedence y))
               (list (list A x B) y C)
               (list A x (list B y C)))]
     (if more
@@ -220,4 +217,4 @@
 (add-parens (subvec tok 0 5))
 
 (p/pprint
- (-> '(1 + 2 * 3) add-parens))
+ (-> '(3 * 2 + 1) add-parens))

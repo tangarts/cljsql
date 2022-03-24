@@ -32,29 +32,42 @@
 (op '+)
 (if (op '-) "in" "out")
 
+(def precedence '{* 0, / 0 + 1, - 1})
+
+(declare parse)
 (defn- -parse [& tokens]
   (let
    [[t tn] tokens]
-    (cond
+    (if
       (nil? tn) (first t)
-      :else
       (loop [[t tn & ts] tokens
-             acc []]
+             acc {:kind :binary
+                          :expression []}]
         (println "t:" t)
         (println "tn:" tn)
         (println "ts:" ts)
         (println "acc: " acc)
         (cond
           (nil? tn) acc
-          (number? t) (recur ts (conj acc {:op tn
+          (number? t) (recur ts (update acc :expression 
+                                        conj {:op tn
                                            :left t
                                            :right (-parse ts)})))))))
+
+(parse [3 '* 2 '+ 1])
+
 (defn parse [tokens]
-  (reduce #(assoc %1 :right %2) (apply -parse tokens)))
+  ;(reduce #(assoc %1 :right %2) )
+  (apply -parse tokens))
 
-(parse [1 '+ 2 '* 3])
+(def maps [{:op '*, :left 4, :right 1} 
+           {:op '+, :left 1, :right 2} 
+           {:op '*, :left 2, :right 3}])
 
-(second '(1))
+(-> (first maps)
+    (assoc-in (into [] (repeat 1 :right)) (get maps 1))
+    (assoc-in (into [] (repeat 2 :right)) (get maps 2)))
+
 
 (defn infix [& exprs]
   (loop [[x & xs] exprs
@@ -64,5 +77,4 @@
       (nil? x) acc
       (number? x) (recur xs (oper acc x) nil)
       :else (recur xs acc x))))
-
 
