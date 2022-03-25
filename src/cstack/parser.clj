@@ -9,16 +9,16 @@
               (catch Exception _ nil))
     value))
 
-(def op #{"and" "or" "=" "<>" "<" ">" "<=" ">=" "||" "+"})
+(def op {"and" 1 "or" 1
+         "=" 2 "<>" 2
+         "<" 3 ">" 3
+         "<=" 4 ">=" 4
+         "||" 5 "+" 5})
 
-(defn binding-power [op]
-  (case op
-    ("and" "or") 1
-    ("=" "<>") 2
-    ("<" ">") 3
-    ("<=" ">=") 4
-    ("||" "+") 5
-    0))
+(def ops
+  (merge op
+         (zipmap (map keyword (keys op)) (vals op))
+         (zipmap (map symbol (keys op)) (vals op))))
 
 (defn expect-token
   [token expected]
@@ -42,8 +42,8 @@
       (if (nil? s) f
           (let [[t ft & _] r]
             (cond
-              (op (get s :token s))
-              (if (and ft (< (binding-power (get s :token s)) (binding-power (get ft :token ft))))
+              (ops (get s :token s))
+              (if (and ft (< (get ops (get s :token s) 0) (get ops (get ft :token ft) 0)))
                 {:kind :binary
                  :expr {:op s :a f :b (parse-binary r)}}
                 (recur (list* {:kind :binary
@@ -53,21 +53,6 @@
               ; (node s f (calc r))
               f))))
     tokens))
-
-(def wherex '({:token "id", :type :identifier} {:token "=", :type :symbol} {:token "1", :type :number}{:token ";", :type :symbol} ))
-
-(parse-binary wherex)
-
-; (defn parse-list [exprs]
-;   (loop [[expr comma & xs] exprs 
-;          acc []]
-;     (prn expr comma xs)
-;      (cond 
-;         (= ")" expr) acc
-;         (not= comma ",") (println "Expected comma")
-;         :else (recur xs (conj acc expr)))))
-; 
-; (parse-list ["1" "," "'user'" ")" ";"])
 
 (defn parse-insert
   " INSERT INTO $table-name VALUES ( $expression [, ...] ) "
@@ -116,7 +101,7 @@
                              select-expr))}
 
         {:from (-> from-expr second :token keyword)
-         :where (parse-binary (rest where-expr)) 
+         :where (parse-binary (rest where-expr))
          :item (mapv #(-> % :token keyword)
                      (filter #(not= (-> % :token) ",")
                              select-expr))})
@@ -127,10 +112,10 @@
                            select-expr))})))
 
 (def tokens [{:token "select", :type :keyword}
-                 {:token "1", :type :number}
-                 {:token "+", :type :symbol}
-                 {:token "1", :type :number}
-                 {:token ";", :type :symbol}])
+             {:token "1", :type :number}
+             {:token "+", :type :symbol}
+             {:token "1", :type :number}
+             {:token ";", :type :symbol}])
 (comment
   (parse-select [{:token "select", :type :keyword}
                  {:token "1", :type :number}

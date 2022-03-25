@@ -8,10 +8,13 @@
   #{"select" "from" "as" "table" "create" "insert" "into" "values" "int" "text"})
 
 (def symbols
-  {:semicolon  ";" :asterisk   "*" :comma      "," :leftparen  "(" :rightparen ")"})
+  {:semicolon  ";" 
+   :asterisk   "*" 
+   :comma      "," 
+   :leftparen  "(" 
+   :rightparen ")"})
 
-(def token-kind
-  #{:keyword :symbol :identifier :string :number})
+(def token-kind #{:keyword :symbol :identifier :string :number})
 
 (defrecord location [line col])
 (defrecord cursor [pointer loc])
@@ -54,4 +57,3 @@
     (mapv #(assoc %1 :col %2)
           tokens
           (reductions + 0 (map #(-> % :token count) tokens)))))
-
