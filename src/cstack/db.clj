@@ -23,13 +23,15 @@
 
 (defn select
   [statement]
-  (let [out (->> (get @db (:from statement))
+  ; (let [out]
+  ;   (if out
+  ;     (reduce (merge-with list*) out)
+  ;     (println "Error")))
+  (->> (get @db (:from statement))
        :rows
-       
-       )]
-    (if out
-      (prn out)
-      (println "Error"))))
+       (mapv #(select-keys % (:item statement)))
+       ))
+
 
 (defn execute [statement]
   (when (:statement statement)
@@ -39,7 +41,6 @@
       :create (create-table (:statement statement))
       (println "Unrecognized statement" (name (:kind statement))))))
 
-(comment
 
   ; (map name (keys @db))
   (do
@@ -65,19 +66,16 @@
     (insert-into {:table :t :values [1 "'3'"]})
     (insert-into {:table :t :values [2 "'name'"]})
     (insert-into {:table :a :values [1]})
-    (select {:from :customer :item [:id]}))
+    (select {:from :customer :item [:id :name]}))
 
-  (def res [{:id 1, :name "'user1'", :email "'user1@clj.org'"} {:id 2, :name "'user2'", :email "'user2@clj.org'"} {:id 3, :name "'user3'", :email "'user3@clj.org'"} {:id 4, :name "'user4'", :email "'user4@clj.org'"} {:id 5, :name "'user5'", :email "'user5@clj.org'"}])
-  (apply merge (mapv (fn [k]
-                          {k (mapv k res)}) [:id :name]))
+(comment
+  (->> [{:i 1 :name "ben"} {:i 2 :name "candice"}]
+       (reduce (partial merge-with vector)))
 
- (->> '({:i 1} {:i 2})
-      (partition-by :i)
-     (map (partial apply merge)))
-
-       (reduce (partial merge-with +) '({:i 1} {:i 2}))
-
-(cons 1 '())
+  (->> (get @db :t)
+       :rows
+       (mapv #(select-keys % [:id]))
+       (reduce (partial merge-with vector)))
 
   [])
 
