@@ -160,6 +160,8 @@
 (def t (tokenise {:code code, :line 0, :col 0, :val :none, :token :none}))
 (p/pprint 
   (parseAll t))
+(parseExpression (first t) (rest t))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ; {:kind :binary
@@ -240,3 +242,36 @@
 (parse-list ["1" "," "'user'" "," "3" ")" ";"] ")")
 
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+(defn parse-exp [token tokens]
+      (println "t:" token)
+      (println "ts:" tokens)
+      (case (:token token)
+        (nil '()) [nil tokens]
+
+        ("(" ")")
+        (loop [expressions []
+               [loopToken & loopTokens] tokens]
+
+          (println "lt:" loopToken)
+          (println "lts:" loopTokens)
+          (cond
+            (or (nil? token) (= '() token))
+            (throw (Exception. (str "EOF waiting for :rparen")))
+
+            (= ")" (:token loopToken)) expressions 
+
+            :else (let [r (parse-exp loopToken loopTokens)]
+                    (recur (conj expressions (:expr r)) (:tokens r)))))
+        {:expr {:type (:type token)
+                :token (:token token)
+                :expressions []}
+         :tokens tokens}))
+
+(parse-exp {:token "(", :type :symbol}
+            '({:token "1", :type :number}
+            {:token ",", :type :symbol}
+            {:token "'user'", :type :string}
+            {:token ")", :type :symbol}))

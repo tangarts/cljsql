@@ -24,6 +24,7 @@
   [token expected]
   (= (token :token) expected))
 
+
 (defn parse-exprs
   "Looks for tokens separated by a comma until delimeter is found
   Only used in Insert.
@@ -107,15 +108,18 @@
                              select-expr))})
 
       {:from (-> from-expr second :token keyword)
-       :item (mapv #(-> % :token)
-                   (filter #(not= (-> % :type) :symbol)
-                           select-expr))})))
+       :item (parse-binary select-expr)})))
 
 (def tokens [{:token "select", :type :keyword}
-             {:token "1", :type :number}
-             {:token "+", :type :symbol}
-             {:token "1", :type :number}
+             {:token "id", :type :identifier}
+             {:token ",", :type :symbol}
+             {:token "name", :type :identifier}
+             {:token "from", :type :string}
+             {:token "t", :type :symbol}
              {:token ";", :type :symbol}])
+
+(parse-select tokens)
+
 (comment
   (parse-select [{:token "select", :type :keyword}
                  {:token "1", :type :number}
