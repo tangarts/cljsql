@@ -43,11 +43,15 @@
           (let [[t ft & _] r]
             (cond
               (ops (get s :token s))
-              (if (and ft (< (get ops (get s :token s) 0) (get ops (get ft :token ft) 0)))
-                {:kind :binary
-                 :expr {:op s :a f :b (parse-binary r)}}
-                (recur (list* {:kind :binary
-                               :expr {:op s :a f :b t}} (rest r))))
+              (if (and ft (< (get ops (get s :token s) 0)
+                             (get ops (get ft :token ft) 0)))
+                ;{:kind :binary
+                ; :expr {:op s :a f :b (parse-binary r)}}
+                (list s f (parse-binary r))
+                (recur (list*; {:kind :binary :expr 
+                             ;  {:op s :a f :b t}}
+                            (list s f t) 
+                              (rest r))))
 
               :else
               ; (node s f (calc r))
@@ -132,16 +136,17 @@
                  {:token ";", :type :symbol}])
 
   (parse-select [{:token "select", :type :keyword}
-                 {:token "id", :type :identifier}
-                 {:token ",", :type :symbol}
-                 {:token "name", :type :identifier}
-                 {:token ",", :type :symbol}
+                 {:token "*", :type :symbol}
                  {:token "from", :type :string}
-                 {:token "t", :type :symbol}
+                 {:token "t", :type :identifier}
                  {:token "where" :type :keyword}
                  {:token "id", :type :identifier}
-                 {:token "=", :type :symbol}
+                 {:token ">", :type :symbol}
                  {:token "1", :type :number}
+                 {:token "and", :type :symbol}
+                 {:token "id", :type :identifier}
+                 {:token "<", :type :symbol}
+                 {:token "5", :type :number}
                  {:token ";", :type :symbol}]))
 
 (defn parse-create

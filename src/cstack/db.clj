@@ -32,7 +32,8 @@
                  (mapv #(select-keys % cols)))]
     (if out
       (p/print-table out)
-      (println "Error"))))
+      (println "Error"))
+    out))
 
 (defn execute [statement]
   (when (:statement statement)
@@ -68,7 +69,7 @@
   (insert-into {:table :a :values [1]})
   (select {:from :customer :item [:*]}))
 
-(comment
+(comment [])
   (->> [{:i 1 :name "ben"} {:i 2 :name "candice"}]
        (reduce (partial merge-with vector)))
 
@@ -76,6 +77,10 @@
        :rows
        (mapv #(select-keys % [:id]))
        (reduce (partial merge-with vector)))
+(->> [{:id 1, :name "'user1'", :email "'user1@clj.org'"} {:id 2, :name "'user2'", :email "'user2@clj.org'"} {:id 3, :name "'user3'", :email "'user3@clj.org'"} {:id 4, :name "'user4'", :email "'user4@clj.org'"} {:id 5, :name "'user5'", :email "'user5@clj.org'"}]
+     (filter (fn [x] (and (> (:id x) 2 )
+                          (<= (:id x) 4)))))
+
 {:from :t, 
  :where 
  {:kind :binary, 
@@ -84,6 +89,34 @@
          :b {:token "1", :type :number}}}, 
  :item [:*]}
 
-  [])
+{:from :t, 
+ :where 
+ '({:token "=", :type :symbol} {:token "id", :type :identifier} {:token "1", :type :number}), 
+ :item [:*]}
 
+(def wh {:from :t, :where 
+  '({:token ">", :type :symbol} {:token "id", :type :identifier} {:token "1", :type :number}) 
+ :item [:*]})
+
+(def sexp 
+  '({:token "and", :type :symbol} 
+    ({:token ">", :type :symbol} {:token "id", :type :identifier} {:token "1", :type :number}) 
+    ({:token "<", :type :symbol} {:token "id", :type :identifier} {:token "5", :type :number})))
+
+(map :token sexp)
+'(and (> id 1) (< id 5))
+
+(->> wh :where 
+     (map :token))
+
+; => (filter #(= :id 1) coll)
+
+(def op {'and 'or
+         '= '=
+         '<> 'not=
+         '<  '<
+         '> '>
+         '<= '<= '>= '>=
+         '|| str '+ '+})
+((op '||) "first " "name")
 
