@@ -1,4 +1,6 @@
-(ns cstack.pratt)
+(ns cstack.pratt
+  (:require [clojure.test :refer :all]
+            [clojure.pprint :as p]))
 
 (def op #{'+ '- '* '/})
 
@@ -41,40 +43,12 @@
       :else
       acc)))
 
-(parse '(1) 0)
-(parse '(1 * 2) 0)
-(parse '(3 * 2 + 1) 0) ; {:kind :binary, :expressions (+ (* 3 2) 1)}
-(parse '(1 + 2 * 3) 0)
-(parse '(a + b * c * d + e) 0)
+; (parse '(1) 0)
+; (parse '(1 * 2) 0)
+; (parse '(3 * 2 + 1) 0) ; {:kind :binary, :expressions (+ (* 3 2) 1)}
+; (parse '(1 + 2 * 3) 0)
+; (parse '(a + b * c * d + e) 0)
 
-(defn infix [& exprs]
-  (loop [[x & xs] exprs
-         acc 0
-         oper +]
-    (cond
-      (nil? x) acc
-      (number? x) (recur xs (oper acc x) nil)
-      :else (recur xs acc x))))
-
-(defn reorder-equation [arg]
-  (if (seq? arg)
-    (let [[f s & r] arg
-          f (reorder-equation f)]
-      (if (nil? s) f
-          (cond
-            (nil? s) f
-
-            (#{"*" "/"} (str s))
-            (let [[t ft & r2] r
-                  t (reorder-equation t)]
-              (if ft
-                (reorder-equation (list* (list s f t) (rest r)))
-                (list s f t)))
-            :else (list s f (reorder-equation r)))))
-    arg))
-
-(reorder-equation '(a + b * c * d + e)) ; (+ a (* (* b c) (+ d e)))
-(reorder-equation '((1 + 2) * (10 - 4) / 9 * 6))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -82,6 +56,15 @@
 
 (def ^:dynamic *ops* '[- + * / < > and or = <>])
 (def rank (zipmap *ops* (iterate inc 1)))
+
+(defn binding-power [op]
+  (case op
+    (and or) 1
+    (= <>) 2
+    (< >) 3
+    (<= >=) 4
+    (|| +) 5
+    0))
 
 (defn- infix*
   [[a b & [c d e & more] :as _]]
@@ -93,33 +76,42 @@
                   (recur (list* (list b a c) d e more)))
     :else a))
 
-(list* 1 2 '(3 + 4))
-(apply list 1 2 '(3 + 4))
+(infix* '[a + b * c + d * e])
 
-(infix* '[a + b * c * d + e]) ; (+ a (+ (* (* b c) d) e))
 
 (defn calc [arg]
   (if (seq? arg)
-    (let [[f s & r] arg
-          f (calc f)] ; ??
+    (loop [[f s & r] arg]
       (if (nil? s)
         f
-        (let [[t ft & r2] r
-              t (calc t)
-              new-f (list s f t)]
+        (let [[t ft & _] r]
           (cond
-            (#{"*" "/"} (str s))
-            (if ft
-              (calc (list* new-f (rest r)))
-              new-f)
 
-            (nil? s) f
+            (rank s)
+            (if (and ft (< (binding-power s) (binding-power ft)))
+
+              (list s f (calc r))
+              (recur (list* (list s f t) (rest r)) ))
+;                  (recur (list a b (infix* (list* c d e more))))
+;                  (recur (list* (list b a c) d e more)))
+
 
             :else
-            (if (#{"+" "/"} (str ft))
-              (calc (list* new-f (rest r)))
-              (list s f (calc r)))))))
+              (list s f (calc r))))))
     arg))
 
-(calc '(1 + 2 * 3))
-(calc '(a + b * c * d + e))
+(calc '(1))
+(calc '(1 + 2))
+(calc '(1 + 2 and 3 > 4))
+(calc '(id = 1 and c > d + e)) 
+(infix* '[a + b * c = d * e])
+(calc '(a + b and c + d * e))
+
+(deftest pratt-parse
+  (are [x y] (= (calc x) y)
+       '(1) 1
+       '(1 + 2) '(+ 1 2)
+       '(1 + 2 * 3) '(+ 1 (* 2 3))
+       ))
+
+(run-tests 'cstack.pratt)
