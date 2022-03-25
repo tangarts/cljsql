@@ -9,15 +9,15 @@
               (catch Exception _ nil))
     value))
 
-(def op '#{and or = <> < > <= >= || +})
+(def op #{"and" "or" "=" "<>" "<" ">" "<=" ">=" "||" "+"})
 
 (defn binding-power [op]
   (case op
-    (and or) 1
-    (= <>) 2
-    (< >) 3
-    (<= >=) 4
-    (|| +) 5
+    ("and" "or") 1
+    ("=" "<>") 2
+    ("<" ">") 3
+    ("<=" ">=") 4
+    ("||" "+") 5
     0))
 
 (defn expect-token
@@ -42,8 +42,8 @@
       (if (nil? s) f
           (let [[t ft & _] r]
             (cond
-              (op s)
-              (if (and ft (< (binding-power s) (binding-power ft)))
+              (op (get s :token s))
+              (if (and ft (< (binding-power (get s :token s)) (binding-power (get ft :token ft))))
                 {:kind :binary
                  :expr {:op s :a f :b (parse-binary r)}}
                 (recur (list* {:kind :binary
@@ -51,18 +51,12 @@
 
               :else
               ; (node s f (calc r))
-              (println "Binary expression expected")))))
+              f))))
     tokens))
 
-; good
-(partition 2 ["1" ")" ";"])
-(partition 2 ["1" "," "'user'" ")" ";"])
-; bad
-(partition 2 ["1" "," "'user'" ")" ";"])
-(partition 2 ["1" "," "'user'" ")" ";"])
-(partition 2 ["1" "," "'user'" ";"])
-(partition 2 ["1" "," "'user'" "," ";"])
-(partition 2 ["1" "'user'" ";"])
+(def wherex '({:token "id", :type :identifier} {:token "=", :type :symbol} {:token "1", :type :number}{:token ";", :type :symbol} ))
+
+(parse-binary wherex)
 
 ; (defn parse-list [exprs]
 ;   (loop [[expr comma & xs] exprs 
@@ -74,15 +68,6 @@
 ;         :else (recur xs (conj acc expr)))))
 ; 
 ; (parse-list ["1" "," "'user'" ")" ";"])
-
-; good
-; (rest (strip-paren ["1" ")" ";"]))
-; ; bad
-; (strip-paren ["," "'user'" ")" ";"])
-; (strip-paren ["," "'user'" ")" ";"])
-; (strip-paren ["1" "," "'user'" ";"])
-; (strip-paren ["1" "," "'user'" "," ";"])
-; (strip-paren ["1" "'user'" ";"])
 
 (defn parse-insert
   " INSERT INTO $table-name VALUES ( $expression [, ...] ) "
@@ -120,6 +105,9 @@
   (let [[select-expr from-expr]
         (split-with #(not= (-> % :token) "from") (rest tokens))
         where-expr (drop-while #(not= (-> % :token) "where") from-expr)]
+    (println select-expr)
+    (println from-expr)
+    (println where-expr)
     (if (not= '() from-expr)
       (if (= '() where-expr)
         {:from (-> from-expr second :token keyword)
@@ -128,7 +116,7 @@
                              select-expr))}
 
         {:from (-> from-expr second :token keyword)
-         :where where-expr
+         :where (parse-binary (rest where-expr)) 
          :item (mapv #(-> % :token keyword)
                      (filter #(not= (-> % :token) ",")
                              select-expr))})
@@ -138,6 +126,11 @@
                    (filter #(not= (-> % :type) :symbol)
                            select-expr))})))
 
+(def tokens [{:token "select", :type :keyword}
+                 {:token "1", :type :number}
+                 {:token "+", :type :symbol}
+                 {:token "1", :type :number}
+                 {:token ";", :type :symbol}])
 (comment
   (parse-select [{:token "select", :type :keyword}
                  {:token "1", :type :number}
@@ -182,17 +175,6 @@
         (println "Expected left parenthesis"))
       (println "Expected table name"))
     (println  "Syntax error")))
-
-(parse-create input)
-
-(def input [{:token "create", :type :keyword}
-      {:token "table", :type :keyword}
-      {:token "customer", :type :identifier}
-      {:token "(", :type :symbol}
-      {:token "id", :type :identifier}
-      {:token "int", :type :keyword}
-      {:token ")", :type :symbol}
-      {:token ";", :type :symbol}])
 
 (defn parse-statement
   [tokens]
