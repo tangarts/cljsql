@@ -1,16 +1,5 @@
 (ns cstack.pratt)
 
-(def ^:dynamic *verbose* false)
-
-(defmacro printfv
-  [fmt & args]
-  `(when *verbose*
-     (printf ~fmt ~@args)))
-
-(defmacro with-verbose
-  [& body]
-  `(binding [*verbose* true] ~@body))
-
 (def op #{'+ '- '* '/})
 
 (defn prec [op]
@@ -18,8 +7,6 @@
     (+ -) [1 2]
     (* /) [3 4]
     (println "Not an op")))
-
-(second [1 2])
 
 (defn multi [tokens]
   (let [[t tn & ts] tokens]
@@ -73,39 +60,66 @@
   (if (seq? arg)
     (let [[f s & r] arg
           f (reorder-equation f)]
-      (cond
-        (#{"*" "/"} (str s))
-        (let [[t ft & r2] r
-              t (reorder-equation t)]
-          (if ft
-            (list ft (list s f t) (reorder-equation r2))
-            (list s f t)))
-        (nil? s) f
-        :else (list s f (reorder-equation r))))
+      (if (nil? s) f
+          (cond
+            (nil? s) f
+
+            (#{"*" "/"} (str s))
+            (let [[t ft & r2] r
+                  t (reorder-equation t)]
+              (if ft
+                (reorder-equation (list* (list s f t) (rest r)))
+                (list s f t)))
+            :else (list s f (reorder-equation r)))))
     arg))
 
-(reorder-equation '(a + b * c * d + e))
+(reorder-equation '(a + b * c * d + e)) ; (+ a (* (* b c) (+ d e)))
+(reorder-equation '((1 + 2) * (10 - 4) / 9 * 6))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ; https://github.com/fogus/unfix/blob/master/src/joy/unfix/infix.clj
 
-(def && #(and   %1 %2))
-(def || #(or    %1 %2))
-(def != #(not=  %1 %2))
-
-(def ^:dynamic *ops* '[- + * / < > && || = !=])
+(def ^:dynamic *ops* '[- + * / < > and or = <>])
 (def rank (zipmap *ops* (iterate inc 1)))
-; (def ^:dynamic _ clojure.core/resolve)
 
-(defn- infix* 
+(defn- infix*
   [[a b & [c d e & more] :as _]]
   (cond
-   (vector? a) (recur (list* (infix* a) b c d e more))
-   (vector? c) (recur (list* a b (infix* c) d e more))
-   (rank b)    (if (and d (< (rank b 0) (rank d 0)))
-                 (recur (list a b (infix* (list* c d e more))))
-                 (recur (list* (list b a c) d e more)))
-   :else a))
+    (vector? a) (recur (list* (infix* a) b c d e more))
+    (vector? c) (recur (list* a b (infix* c) d e more))
+    (rank b)    (if (and d (< (rank b 0) (rank d 0)))
+                  (recur (list a b (infix* (list* c d e more))))
+                  (recur (list* (list b a c) d e more)))
+    :else a))
 
-(infix* '[a + b * c * d + e])
+(list* 1 2 '(3 + 4))
+(apply list 1 2 '(3 + 4))
+
+(infix* '[a + b * c * d + e]) ; (+ a (+ (* (* b c) d) e))
+
+(defn calc [arg]
+  (if (seq? arg)
+    (let [[f s & r] arg
+          f (calc f)] ; ??
+      (if (nil? s)
+        f
+        (let [[t ft & r2] r
+              t (calc t)
+              new-f (list s f t)]
+          (cond
+            (#{"*" "/"} (str s))
+            (if ft
+              (calc (list* new-f (rest r)))
+              new-f)
+
+            (nil? s) f
+
+            :else
+            (if (#{"+" "/"} (str ft))
+              (calc (list* new-f (rest r)))
+              (list s f (calc r)))))))
+    arg))
+
+(calc '(1 + 2 * 3))
+(calc '(a + b * c * d + e))
