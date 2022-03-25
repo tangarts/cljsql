@@ -19,9 +19,9 @@
 
 (defn parse-binary
   "Parse Binary expression"
-  [arg]
-  (if (seq? arg)
-    (loop [[f s & r] arg]
+  [tokens]
+  (if (seq? tokens)
+    (loop [[f s & r] tokens]
       (if (nil? s) f
         (let [[t ft & _] r]
           (cond
@@ -34,7 +34,7 @@
             :else
               ; (node s f (calc r))
             (println "Binary expression expected")))))
-    arg))
+    tokens))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 

@@ -218,3 +218,25 @@
 
 (p/pprint
  (-> '(3 * 2 + 1) add-parens))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defn strip-paren [tokens delim]
+  (let [right-striped (take-while (complement #{delim}) tokens)]
+    (if (not= right-striped tokens)
+      right-striped
+      (println "Expected closing parenthesis"))))
+
+(defn parse-list 
+  "Looks for tokens separated by a comma until delimeter is found
+  Only works for single literal expressions.
+  "
+  [values delim]
+  (when-let [[v & vs] (strip-paren values delim)]
+    ; apply vector vs. cons v ?
+    (apply vector v (map second (partition 2 vs)))))
+
+(rest (strip-paren ["1" "," "'user'" "," "3" ")" ";"] ")"))
+(parse-list ["1" "," "'user'" "," "3" ")" ";"] ")")
+
+

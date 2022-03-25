@@ -31,6 +31,22 @@
       {:token ";", :type :symbol}])
     {:name :customer, :cols [{:name "id", :datatype "int"}]}))
 
+
+(deftest test-parse-binary
+  (is (= (parse-binary '(1)) 1))
+  (is (= (parse-binary '(1 + 2))
+         {:kind :binary, :expr {:a 1, :op '+, :b 2}})
+  (is (= (parse-binary '(2 = 3 and 4 = 5))
+      {:kind :binary, 
+       :expr 
+       {:a {:kind :binary, 
+            :expr {:a 2, :op '=, :b 3}}, 
+        :op 'and, 
+        :b {:kind :binary, 
+            :expr {:a 4, :op '=, :b 5}}}}))
+  ))
+
+
 (run-tests 'cstack.test-parser)
 
 (comment

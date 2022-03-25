@@ -9,36 +9,94 @@
               (catch Exception _ nil))
     value))
 
+(def op '#{and or = <> < > <= >= || +})
+
+(defn binding-power [op]
+  (case op
+    (and or) 1
+    (= <>) 2
+    (< >) 3
+    (<= >=) 4
+    (|| +) 5
+    0))
+
 (defn expect-token
   [token expected]
   (= (token :token) expected))
 
 (defn parse-exprs
-  "Looks for tokens separated by a comma until delimeter is found"
-;  ^{:post [(every? #(not= :symbol (-> % :type)) %)]}
+  "Looks for tokens separated by a comma until delimeter is found
+  Only used in Insert.
+  "
+  ^{:post [(every? #(not= :symbol (-> % :type)) %)]}
   [tokens delim]
   (filter #(not= (-> % :token) ",")
           (take-while #(not= (-> % :token) delim)
                       tokens)))
+
+(defn parse-binary
+  "Parse Binary expression"
+  [tokens]
+  (if (seq? tokens)
+    (loop [[f s & r] tokens]
+      (if (nil? s) f
+          (let [[t ft & _] r]
+            (cond
+              (op s)
+              (if (and ft (< (binding-power s) (binding-power ft)))
+                {:kind :binary
+                 :expr {:op s :a f :b (parse-binary r)}}
+                (recur (list* {:kind :binary
+                               :expr {:op s :a f :b t}} (rest r))))
+
+              :else
+              ; (node s f (calc r))
+              (println "Binary expression expected")))))
+    tokens))
+
+; good
+(partition 2 ["1" ")" ";"])
+(partition 2 ["1" "," "'user'" ")" ";"])
+; bad
+(partition 2 ["1" "," "'user'" ")" ";"])
+(partition 2 ["1" "," "'user'" ")" ";"])
+(partition 2 ["1" "," "'user'" ";"])
+(partition 2 ["1" "," "'user'" "," ";"])
+(partition 2 ["1" "'user'" ";"])
+
+; (defn parse-list [exprs]
+;   (loop [[expr comma & xs] exprs 
+;          acc []]
+;     (prn expr comma xs)
+;      (cond 
+;         (= ")" expr) acc
+;         (not= comma ",") (println "Expected comma")
+;         :else (recur xs (conj acc expr)))))
+; 
+; (parse-list ["1" "," "'user'" ")" ";"])
+
+; good
+; (rest (strip-paren ["1" ")" ";"]))
+; ; bad
+; (strip-paren ["," "'user'" ")" ";"])
+; (strip-paren ["," "'user'" ")" ";"])
+; (strip-paren ["1" "," "'user'" ";"])
+; (strip-paren ["1" "," "'user'" "," ";"])
+; (strip-paren ["1" "'user'" ";"])
+
 (defn parse-insert
-  "
-    INSERT
-    INTO
-    $table-name
-    VALUES ( $expression [, ...])
-  "
+  " INSERT INTO $table-name VALUES ( $expression [, ...] ) "
   [input]
   (if (expect-token (input 1) "into")
     (if (= ((input 2) :type) :identifier) ; table-name
       (if (expect-token (input 3) "values")
-        {:table (-> (input 2) :token keyword)
-         :values
-         (mapv
-          (fn [v] (convert (v :token) (v :type)))
-          (parse-exprs (rest
-                        (drop-while #(not= (-> % :token) "(")
-                                    input))
-                       ")"))}
+        (if (expect-token (input 4) "(")
+          {:table (-> (input 2) :token keyword)
+           :values
+           (mapv
+            (fn [v] (convert (v :token) (v :type)))
+            (parse-exprs (subvec input 5) ")"))}
+          (println "Expected left parenthesis"))
         (println "Expected values keyword"))
       (println "Expected table names"))
     (println "Expected into")))
@@ -55,12 +113,7 @@
                {:token ";", :type :symbol}])
 
 (defn parse-select
-  "
-    SELECT
-    $expression [, ...]
-    FROM
-    $table-name 
-  "
+  " SELECT $expression [, ...] FROM $table-name "
   [tokens]
   ; "TODO: validation"
   ; some validation in parse exprs
@@ -73,6 +126,7 @@
          :item (mapv #(-> % :token keyword)
                      (filter #(not= (-> % :token) ",")
                              select-expr))}
+
         {:from (-> from-expr second :token keyword)
          :where where-expr
          :item (mapv #(-> % :token keyword)
@@ -110,30 +164,35 @@
                  {:token "id", :type :identifier}
                  {:token "=", :type :symbol}
                  {:token "1", :type :number}
-                 {:token ";", :type :symbol}])
+                 {:token ";", :type :symbol}]))
 
-  )
 (defn parse-create
-  "
-    CREATE
-    $table-name
-    (
-    [$column-name $column-type [, ...]]
-    ) 
-  "
+  " CREATE $table-name ( [$column-name $column-type [, ...]] ) "
   [input]
   ; "TODO: Validation"
   (if (expect-token (input 1) "table")
     (if (=  (-> input (get 2) :type)  :identifier) ; table-name
-      {:name (-> (input 2) :token keyword)
-       :cols
-       (mapv (fn [t]
-               {:name (first t) :datatype (second t)})
-             (partition 2
-                        (mapv :token
-                              (parse-exprs (subvec input 4) ")"))))}
+      (if (expect-token (input 3) "(")
+        {:name (-> (input 2) :token keyword)
+         :cols
+         (mapv (fn [t]
+                 {:name (first t) :datatype (second t)})
+               (partition 2 (map :token
+                                 (parse-exprs (subvec input 4) ")"))))}
+        (println "Expected left parenthesis"))
       (println "Expected table name"))
     (println  "Syntax error")))
+
+(parse-create input)
+
+(def input [{:token "create", :type :keyword}
+      {:token "table", :type :keyword}
+      {:token "customer", :type :identifier}
+      {:token "(", :type :symbol}
+      {:token "id", :type :identifier}
+      {:token "int", :type :keyword}
+      {:token ")", :type :symbol}
+      {:token ";", :type :symbol}])
 
 (defn parse-statement
   [tokens]
