@@ -24,7 +24,6 @@
   [token expected]
   (= (token :token) expected))
 
-
 (defn parse-exprs
   "Looks for tokens separated by a comma until delimeter is found
   Only used in Insert.
@@ -57,16 +56,17 @@
 
 (defn parse-insert
   " INSERT INTO $table-name VALUES ( $expression [, ...] ) "
-  [input]
-  (if (expect-token (input 1) "into")
-    (if (= ((input 2) :type) :identifier) ; table-name
-      (if (expect-token (input 3) "values")
-        (if (expect-token (input 4) "(")
-          {:table (-> (input 2) :token keyword)
-           :values
-           (mapv
-            (fn [v] (convert (v :token) (v :type)))
-            (parse-exprs (subvec input 5) ")"))}
+  [tokens]
+  (if (expect-token (tokens 1) "into")
+    (if (= ((tokens 2) :type) :identifier) ; table-name
+      (if (expect-token (tokens 3) "values")
+        (if (expect-token (tokens 4) "(")
+          {:table (-> (tokens 2) :token keyword)
+           :values (parse-exprs (subvec tokens 5) ")") ; convert to literal / binary expressions?
+          ; (mapv
+          ;  (fn [v] (convert (v :token) (v :type)))
+          ;  )
+           }
           (println "Expected left parenthesis"))
         (println "Expected values keyword"))
       (println "Expected table names"))
@@ -90,31 +90,27 @@
   ; some validation in parse exprs
   (let [[select-expr from-expr]
         (split-with #(not= (-> % :token) "from") (rest tokens))
-        where-expr (drop-while #(not= (-> % :token) "where") from-expr)]
+        where-expr (drop-while #(not= (-> % :token) "where") from-expr)
+        from (-> from-expr second :token keyword)]
     (println select-expr)
     (println from-expr)
     (println where-expr)
     (if (not= '() from-expr)
       (if (= '() where-expr)
-        {:from (-> from-expr second :token keyword)
+        {:from from
          :item (mapv #(-> % :token keyword)
                      (filter #(not= (-> % :token) ",")
                              select-expr))}
-
-        {:from (-> from-expr second :token keyword)
+        {:from from
          :where (parse-binary (rest where-expr))
          :item (mapv #(-> % :token keyword)
                      (filter #(not= (-> % :token) ",")
                              select-expr))})
-
-      {:from (-> from-expr second :token keyword)
+      {:from from
        :item (parse-binary select-expr)})))
 
 (def tokens [{:token "select", :type :keyword}
-             {:token "id", :type :identifier}
-             {:token ",", :type :symbol}
-             {:token "name", :type :identifier}
-             {:token "from", :type :string}
+             {:token "*", :type :symbol}
              {:token "t", :type :symbol}
              {:token ";", :type :symbol}])
 
@@ -157,8 +153,8 @@
       (if (expect-token (input 3) "(")
         {:name (-> (input 2) :token keyword)
          :cols
-         (mapv (fn [t]
-                 {:name (first t) :datatype (second t)})
+         (mapv (fn [[t ts] & _]
+                 {:name t :datatype ts})
                (partition 2 (map :token
                                  (parse-exprs (subvec input 4) ")"))))}
         (println "Expected left parenthesis"))
@@ -167,7 +163,7 @@
 
 (defn parse-statement
   [tokens]
-  (case (get (first tokens) :token)
+  (case (:token (first tokens))
     "select" {:kind :select :statement (parse-select tokens)}
     "insert" {:kind :insert :statement (parse-insert tokens)}
     "create" {:kind :create :statement (parse-create tokens)}
