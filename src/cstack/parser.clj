@@ -1,13 +1,28 @@
 (ns cstack.parser)
 
-(defn convert [value type]
+(defn convert [type value]
   ; TODO: parse-expr {:literal token :kind literalKind}
   ; TODO: parse-expr {:fn token :kind fnKind}
   (case type
+    :identifier (keyword value)
+    :symbol (symbol value)
     :number (try
               (Integer/parseInt value)
               (catch Exception _ nil))
     value))
+
+(->>  [{:token "id", :type :identifier}
+                 {:token ">", :type :symbol}
+                 {:token "1", :type :number}
+                 {:token "and", :type :symbol}
+                 {:token "id", :type :identifier}
+                 {:token "<", :type :symbol}
+                 {:token "5", :type :number}
+                 {:token ";", :type :symbol}]
+     (map #(convert (-> % :type) (-> % :token)))
+     parse-binary
+     )
+
 
 (def op {"and" 1 "or" 1
          "=" 2 "<>" 2
@@ -24,25 +39,25 @@
   "Parse Binary expression"
   [tokens]
   (if (sequential? tokens)
-    (loop [[f s & r] tokens]
+    (loop [[a op & xs] tokens]
       ; f becoms accumulator
-      (if (nil? s) f
-          (let [[t ft & _] r]
+      (if (nil? op) a
+          (let [[b next-op & _] xs]
             (cond
-              (ops (get s :token s))
-              (if (and ft (< (get ops (get s :token s) 0)
-                             (get ops (get ft :token ft) 0)))
+              (ops (get op :token op))
+              (if (and next-op (< (get ops (get op :token op) 0)
+                             (get ops (get next-op :token next-op) 0)))
                 ;{:kind :binary
                 ; :expr {:op s :a f :b (parse-binary r)}}
-                (list s f (parse-binary r))
+                (list op a (parse-binary xs))
                 (recur (list*; {:kind :binary :expr 
                              ;  {:op s :a f :b t}}
-                        (list s f t)
-                        (rest r))))
+                        (list op a b)
+                        (rest xs))))
 
               :else
               ; (node s f (calc r))
-              f))))
+              a))))
     tokens))
 
 (defn parse-exprs [exprs delim]
@@ -53,7 +68,9 @@
            (let [[nx & _] xs]
              (cond
                (= delim (:token c)) acc
-               (= "," (:token c)) (recur xs (conj acc (parse-binary nx)))
+
+               (= "," (:token c))
+               (recur xs (conj acc (parse-binary nx)))
 
                :else (println "expected comma")))))
     exprs))
@@ -126,21 +143,9 @@
       {:from from
        :item (parse-binary select-expr)})))
 
-(def tokens [{:token "select", :type :keyword}
-             {:token "*", :type :symbol}
-             {:token "t", :type :symbol}
-             {:token ";", :type :symbol}])
-
-(parse-select tokens)
-
 (comment
-  (parse-select [{:token "select", :type :keyword}
-                 {:token "1", :type :number}
-                 {:token "+", :type :symbol}
-                 {:token "1", :type :number}
-                 {:token ";", :type :symbol}])
 
-  (parse-select [{:token "select", :type :keyword}
+  (parse-exprs [{:token "select", :type :keyword}
                  {:token "id", :type :identifier}
                  {:token ",", :type :symbol}
                  {:token "name", :type :identifier}

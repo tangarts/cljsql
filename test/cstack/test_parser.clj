@@ -33,20 +33,15 @@
 
 (deftest test-parse-binary
   (is (= (parse-binary '(1)) 1))
-  (is (= (parse-binary '(1 + 2)) ; fail
-         {:kind :binary, :expr {:a 1, :op '+, :b 2}})
-      (is (= (parse-binary '(2 = 3 and 4 = 5))
-             {:kind :binary,
-              :expr
-              {:a {:kind :binary,
-                   :expr {:a 2, :op '=, :b 3}},
-               :op 'and,
-               :b {:kind :binary,
-                   :expr {:a 4, :op '=, :b 5}}}})))) ; fail
+  (is (= (parse-binary '(1 + 2))
+         '(+ 1 2)))
+  (is (= (parse-binary '(2 = 3 and 4 = 5))
+         '(and (= 2 3) (= 4 5)))))
 
 (run-tests 'cstack.test-parser)
 
 (comment
+
   (parse-exprs [{:token "id", :type :identifier}
                 {:token "int", :type :keyword}
                 {:token ",", :type :symbol}
@@ -54,11 +49,13 @@
                 {:token "text", :type :keyword}
                 {:token ")", :type :symbol}
                 {:token ";", :type :symbol}] ")")
+
   (parse-exprs [{:token "id", :type :identifier}
                 {:token ",", :type :symbol}
                 {:token "name", :type :identifier}
                 {:token ")", :type :symbol}
                 {:token ";", :type :symbol}] ")")
+
   (column-def [{:token "id", :type :identifier}
                {:token "int", :type :keyword}
                {:token ",", :type :symbol}
@@ -74,5 +71,24 @@
                 {:token "lname", :type :identifier}
                 {:token ")", :type :symbol}] ")")
 
+  (parse-select [{:token "select", :type :keyword}
+                 {:token "*", :type :symbol}
+                 {:token "from", :type :string}
+                 {:token "t", :type :identifier}
+                 {:token "where" :type :keyword}
+                 {:token "id", :type :identifier}
+                 {:token ">", :type :symbol}
+                 {:token "1", :type :number}
+                 {:token "and", :type :symbol}
+                 {:token "id", :type :identifier}
+                 {:token "<", :type :symbol}
+                 {:token "5", :type :number}
+                 {:token ";", :type :symbol}])
+
+  (parse-select [{:token "select", :type :keyword}
+                 {:token "1", :type :number}
+                 {:token "+", :type :symbol}
+                 {:token "1", :type :number}
+                 {:token ";", :type :symbol}])
   [])
 
