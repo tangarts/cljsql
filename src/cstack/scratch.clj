@@ -1,6 +1,7 @@
 (ns cljsexp-simple.core
   (:require [clojure.pprint :as p]
-            [clojure.walk :refer [postwalk]]))
+            [clojure.walk :refer [postwalk]]
+            [cstack.parser :refer [parse-binary]]))
 
 (def funcs {"prn" println
             "+" +})
@@ -248,7 +249,7 @@
 (defn parse-exp [token tokens]
       (println "t:" token)
       (println "ts:" tokens)
-      (case (:token token)
+      (case token 
         (nil '()) [nil tokens]
 
         ("(" ")")
@@ -261,7 +262,7 @@
             (or (nil? token) (= '() token))
             (throw (Exception. (str "EOF waiting for :rparen")))
 
-            (= ")" (:token loopToken)) expressions 
+            (= ")" loopToken) expressions 
 
             :else (let [r (parse-exp loopToken loopTokens)]
                     (recur (conj expressions (:expr r)) (:tokens r)))))
@@ -269,9 +270,3 @@
                 :token (:token token)
                 :expressions []}
          :tokens tokens}))
-
-(parse-exp {:token "(", :type :symbol}
-            '({:token "1", :type :number}
-            {:token ",", :type :symbol}
-            {:token "'user'", :type :string}
-            {:token ")", :type :symbol}))

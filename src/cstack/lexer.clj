@@ -14,10 +14,10 @@
    :leftparen  "(" 
    :rightparen ")"})
 
-(def token-kind #{:keyword :symbol :identifier :string :number})
+(:semicolon symbols)
+(get keywords "select")
 
-(defrecord location [line col])
-(defrecord cursor [pointer loc])
+(def token-kind #{:keyword :symbol :identifier :string :number})
 
 ;;; ==========================================================
 

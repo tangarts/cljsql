@@ -24,21 +24,13 @@
   [token expected]
   (= (token :token) expected))
 
-(defn parse-exprs
-  "Looks for tokens separated by a comma until delimeter is found
-  Only used in Insert.
-  "
-  ^{:post [(every? #(not= :symbol (-> % :type)) %)]}
-  [tokens delim]
-  (filter #(not= (-> % :token) ",")
-          (take-while #(not= (-> % :token) delim)
-                      tokens)))
 
 (defn parse-binary
   "Parse Binary expression"
   [tokens]
-  (if (seq? tokens)
+  (if (sequential? tokens)
     (loop [[f s & r] tokens]
+      ; f becoms accumulator
       (if (nil? s) f
           (let [[t ft & _] r]
             (cond
@@ -57,6 +49,54 @@
               ; (node s f (calc r))
               f))))
     tokens))
+
+(defn parse-exprs [exprs delim]
+  (if (sequential? exprs)
+    (loop [[x c & xs] exprs
+           acc [x]]
+    (if  (nil? x) (println "Expected " delim)
+     (let [[nx & _] xs]
+       (cond 
+        (= delim (:token c)) acc 
+        (= "," (:token c)) (recur xs (conj acc (parse-binary nx)))
+
+        :else (println "expected comma")))))
+    exprs))
+
+(defn column-def [exprs delim]
+  (if (sequential? exprs)
+    (loop [[cn tn c & xs] exprs
+           acc [cn tn]]
+    (if  (nil? cn) (println "Expected " delim)
+     (let [[cnn tnn & _] xs]
+       (cond 
+        (= delim (:token c)) acc 
+        (= "," (:token c)) (recur xs (conj acc cnn tnn))
+
+        :else (println "expected comma")))))
+    exprs))
+
+(column-def [
+      {:token "id", :type :identifier}
+      {:token "int", :type :keyword}
+      {:token ",", :type :symbol}
+      {:token "age", :type :identifier}
+      {:token "int", :type :keyword}
+      {:token ")", :type :symbol}
+      {:token ";", :type :symbol}] ")")
+
+ 
+
+(parse-exprs [{:token "id", :type :identifier}
+                {:token ",", :type :symbol}
+                {:token "name", :type :identifier}
+                {:token ",", :type :symbol}
+                {:token "lname", :type :identifier}
+                {:token ")", :type :symbol}
+                ] ")")
+
+(parse-binary '(1))
+(parse-binary '(1 = 2 + 3))
 
 (defn parse-insert
   " INSERT INTO $table-name VALUES ( $expression [, ...] ) "
@@ -161,7 +201,7 @@
          (mapv (fn [[t ts] & _]
                  {:name t :datatype ts})
                (partition 2 (map :token
-                                 (parse-exprs (subvec input 4) ")"))))}
+                                 (column-def (subvec input 4) ")"))))}
         (println "Expected left parenthesis"))
       (println "Expected table name"))
     (println  "Syntax error")))
