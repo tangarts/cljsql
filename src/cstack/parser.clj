@@ -1,8 +1,6 @@
 (ns cstack.parser)
 
 (defn convert [type value]
-  ; TODO: parse-expr {:literal token :kind literalKind}
-  ; TODO: parse-expr {:fn token :kind fnKind}
   (case type
     :identifier (keyword value)
     :symbol (symbol value)
@@ -10,6 +8,14 @@
               (Integer/parseInt value)
               (catch Exception _ nil))
     value))
+
+; (def operation {'and 'or
+;          '= '=
+;          '<> 'not=
+;          '<  '<
+;          '> '>
+;          '<= '<= '>= '>=
+;          '|| str '+ '+})
 
 (->>  [{:token "id", :type :identifier}
                  {:token ">", :type :symbol}
@@ -20,7 +26,6 @@
                  {:token "5", :type :number}
                  {:token ";", :type :symbol}]
      (map #(convert (-> % :type) (-> % :token)))
-     parse-binary
      )
 
 
@@ -70,7 +75,7 @@
                (= delim (:token c)) acc
 
                (= "," (:token c))
-               (recur xs (conj acc (parse-binary nx)))
+               (recur xs (conj acc nx))
 
                :else (println "expected comma")))))
     exprs))
@@ -136,7 +141,10 @@
                      (filter #(not= (-> % :token) ",")
                              select-expr))}
         {:from from
-         :where (parse-binary (rest where-expr))
+         :where (mapv
+                 #(convert (-> % :type)
+                          (-> % :token))
+                          (rest where-expr))
          :item (mapv #(-> % :token keyword)
                      (filter #(not= (-> % :token) ",")
                              select-expr))})
@@ -145,27 +153,15 @@
 
 (comment
 
-  (parse-exprs [{:token "select", :type :keyword}
+  (def tkn [{:token "select", :type :keyword}
                  {:token "id", :type :identifier}
                  {:token ",", :type :symbol}
                  {:token "name", :type :identifier}
                  {:token "from", :type :string}
                  {:token "t", :type :symbol}
-                 {:token ";", :type :symbol}])
+                 {:token ";", :type :symbol}] ":")
 
-  (parse-select [{:token "select", :type :keyword}
-                 {:token "*", :type :symbol}
-                 {:token "from", :type :string}
-                 {:token "t", :type :identifier}
-                 {:token "where" :type :keyword}
-                 {:token "id", :type :identifier}
-                 {:token ">", :type :symbol}
-                 {:token "1", :type :number}
-                 {:token "and", :type :symbol}
-                 {:token "id", :type :identifier}
-                 {:token "<", :type :symbol}
-                 {:token "5", :type :number}
-                 {:token ";", :type :symbol}]))
+)
 
 (defn parse-create
   " CREATE $table-name ( [$column-name $column-type [, ...]] ) "

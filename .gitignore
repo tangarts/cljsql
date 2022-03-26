@@ -3,4 +3,5 @@
 .lsp/
 *.lisp
 .nrepl-port
-
+*.db
+*.sqlite
