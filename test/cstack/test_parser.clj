@@ -26,7 +26,6 @@
       {:token "customer", :type :identifier}
       {:token "(", :type :symbol}
       {:token "id", :type :identifier}
-      {:token ",", :type :symbol}
       {:token "int", :type :keyword}
       {:token ")", :type :symbol}
       {:token ";", :type :symbol}])
@@ -60,5 +59,20 @@
                 {:token "name", :type :identifier}
                 {:token ")", :type :symbol}
                 {:token ";", :type :symbol}] ")")
+  (column-def [{:token "id", :type :identifier}
+               {:token "int", :type :keyword}
+               {:token ",", :type :symbol}
+               {:token "age", :type :identifier}
+               {:token "int", :type :keyword}
+               {:token ")", :type :symbol}
+               {:token ";", :type :symbol}] ")")
+
+  (parse-exprs [{:token "id", :type :identifier}
+                {:token ",", :type :symbol}
+                {:token "name", :type :identifier}
+                {:token ",", :type :symbol}
+                {:token "lname", :type :identifier}
+                {:token ")", :type :symbol}] ")")
+
   [])
 

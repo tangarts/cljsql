@@ -20,11 +20,6 @@
          (zipmap (map keyword (keys op)) (vals op))
          (zipmap (map symbol (keys op)) (vals op))))
 
-(defn expect-token
-  [token expected]
-  (= (token :token) expected))
-
-
 (defn parse-binary
   "Parse Binary expression"
   [tokens]
@@ -42,8 +37,8 @@
                 (list s f (parse-binary r))
                 (recur (list*; {:kind :binary :expr 
                              ;  {:op s :a f :b t}}
-                            (list s f t) 
-                              (rest r))))
+                        (list s f t)
+                        (rest r))))
 
               :else
               ; (node s f (calc r))
@@ -54,57 +49,35 @@
   (if (sequential? exprs)
     (loop [[x c & xs] exprs
            acc [x]]
-    (if  (nil? x) (println "Expected " delim)
-     (let [[nx & _] xs]
-       (cond 
-        (= delim (:token c)) acc 
-        (= "," (:token c)) (recur xs (conj acc (parse-binary nx)))
+      (if  (nil? x) (println "Expected " delim)
+           (let [[nx & _] xs]
+             (cond
+               (= delim (:token c)) acc
+               (= "," (:token c)) (recur xs (conj acc (parse-binary nx)))
 
-        :else (println "expected comma")))))
+               :else (println "expected comma")))))
     exprs))
 
 (defn column-def [exprs delim]
   (if (sequential? exprs)
     (loop [[cn tn c & xs] exprs
            acc [cn tn]]
-    (if  (nil? cn) (println "Expected " delim)
-     (let [[cnn tnn & _] xs]
-       (cond 
-        (= delim (:token c)) acc 
-        (= "," (:token c)) (recur xs (conj acc cnn tnn))
+      (if  (nil? cn) (println "Expected " delim)
+           (let [[cnn tnn & _] xs]
+             (cond
+               (= delim (:token c)) acc
+               (= "," (:token c)) (recur xs (conj acc cnn tnn))
 
-        :else (println "expected comma")))))
+               :else (println "expected comma")))))
     exprs))
-
-(column-def [
-      {:token "id", :type :identifier}
-      {:token "int", :type :keyword}
-      {:token ",", :type :symbol}
-      {:token "age", :type :identifier}
-      {:token "int", :type :keyword}
-      {:token ")", :type :symbol}
-      {:token ";", :type :symbol}] ")")
-
- 
-
-(parse-exprs [{:token "id", :type :identifier}
-                {:token ",", :type :symbol}
-                {:token "name", :type :identifier}
-                {:token ",", :type :symbol}
-                {:token "lname", :type :identifier}
-                {:token ")", :type :symbol}
-                ] ")")
-
-(parse-binary '(1))
-(parse-binary '(1 = 2 + 3))
 
 (defn parse-insert
   " INSERT INTO $table-name VALUES ( $expression [, ...] ) "
   [tokens]
-  (if (expect-token (tokens 1) "into")
-    (if (= ((tokens 2) :type) :identifier) ; table-name
-      (if (expect-token (tokens 3) "values")
-        (if (expect-token (tokens 4) "(")
+  (if (= (get-in tokens [1 :token]) "into")
+    (if (= (get-in tokens [2 :type]) :identifier) ; table-name
+      (if (= (get-in tokens [3 :token]) "values")
+        (if (= (get-in tokens [4 :token]) "(")
           {:table (-> (tokens 2) :token keyword)
            :values (parse-exprs (subvec tokens 5) ")") ; convert to literal / binary expressions?
           ; (mapv
@@ -192,10 +165,9 @@
 (defn parse-create
   " CREATE $table-name ( [$column-name $column-type [, ...]] ) "
   [input]
-  ; "TODO: Validation"
-  (if (expect-token (input 1) "table")
-    (if (=  (-> input (get 2) :type)  :identifier) ; table-name
-      (if (expect-token (input 3) "(")
+  (if (= (get-in input [1 :token]) "table")
+    (if (=  (get-in input [2 :type])  :identifier) ; table-name
+      (if (= (get-in input [3 :token]) "(")
         {:name (-> (input 2) :token keyword)
          :cols
          (mapv (fn [[t ts] & _]
