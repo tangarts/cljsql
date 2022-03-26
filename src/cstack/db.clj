@@ -1,6 +1,5 @@
 (ns cstack.db
-  (:require [clojure.pprint :as p]
-            [cstack.parser :refer [parse-select]]))
+  (:require [clojure.pprint :as p]))
 
 ; (def db {:customer {:cols [] :types [] :rows [][]}
 ;          :tbls2 {:cols [] :types [] :rows [][]}}})
@@ -46,16 +45,29 @@
        (condition ~t ~k1 ~op1 ~k2)
        (condition ~t ~@other)))))
 
+(defmacro condm
+  [& conditions]
+  `(fn [t#] (condition t# ~@conditions)))
+
 (defn condfn
-  ([_]
-   true)
+  ([t] t)
+
   ([t k1 op k2]
    (let [v1 (if (keyword? k1) (k1 t) k1)
          v2 (if (keyword? k2) (k2 t) k2)]
      ((resolve op) v1 v2)))
+  ([t k1 op1 k2 link & other]
+   (println "t: " t)
+   (println "k1: " k1)
+   (println "op1: " op1)
+   (println "k2: " k2)
+   (println "link: "  link)
+   (println "other: " other)
 
-  ([t & xs]
-   (apply condfn t xs)))
+   (link
+    (condfn t k1 op1 k2)
+    (apply condfn t other))
+   ))
 
 (def table [{:a 1 :b 100 :c "100" :d 4}
             {:a 2 :b 200 :c "200" :d 3}
@@ -64,7 +76,9 @@
 
 (comment
   (->> table
-       (filter (fn [t] (apply condfn t [:a '> 2 'and :a '<= 3])))))
+       (filter 
+           (fn [t] (condition t [:a '> 2 'and :b '<= 300]))
+           )))
 
 (defn select
   [statement]
@@ -120,19 +134,6 @@
   (insert-into {:table :t :values [3 "'name'"]})
   (insert-into {:table :t :values [4 "'name'"]})
   (insert-into {:table :a :values [1]})
-
-  (select (parse-select [{:token "select", :type :keyword}
-                         {:token "*", :type :symbol}
-                         {:token "from", :type :string}
-                         {:token "t", :type :identifier}
-                         {:token "where" :type :keyword}
-                         {:token "id", :type :identifier}
-                         {:token ">=", :type :symbol}
-                         {:token "3", :type :number}
-                 ; {:token "and", :type :symbol}
-                 ; {:token "id", :type :identifier}
-                 ; {:token "<", :type :symbol}
-                 ; {:token "5", :type :number}
-                         ])))
+  (select '{:from :t, :where [:id >= 3 and :id < 5], :item [:*]}))
 
 
