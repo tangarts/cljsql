@@ -1,13 +1,14 @@
 (ns cstack.parser)
 
-(defn convert [type value]
+(defn convert [{type :type token :token}]
   (case type
-    :identifier (keyword value)
-    :symbol (symbol value)
+    :identifier (keyword token)
+    :keyword (symbol token)
+    :symbol (symbol token)
     :number (try
-              (Integer/parseInt value)
+              (Integer/parseInt token)
               (catch Exception _ nil))
-    value))
+    token))
 
 ; (def operation {'and 'or
 ;          '= '=
@@ -16,18 +17,6 @@
 ;          '> '>
 ;          '<= '<= '>= '>=
 ;          '|| str '+ '+})
-
-(->>  [{:token "id", :type :identifier}
-                 {:token ">", :type :symbol}
-                 {:token "1", :type :number}
-                 {:token "and", :type :symbol}
-                 {:token "id", :type :identifier}
-                 {:token "<", :type :symbol}
-                 {:token "5", :type :number}
-                 {:token ";", :type :symbol}]
-     (map #(convert (-> % :type) (-> % :token)))
-     )
-
 
 (def op {"and" 1 "or" 1
          "=" 2 "<>" 2
@@ -51,7 +40,7 @@
             (cond
               (ops (get op :token op))
               (if (and next-op (< (get ops (get op :token op) 0)
-                             (get ops (get next-op :token next-op) 0)))
+                                  (get ops (get next-op :token next-op) 0)))
                 ;{:kind :binary
                 ; :expr {:op s :a f :b (parse-binary r)}}
                 (list op a (parse-binary xs))
@@ -101,11 +90,7 @@
       (if (= (get-in tokens [3 :token]) "values")
         (if (= (get-in tokens [4 :token]) "(")
           {:table (-> (tokens 2) :token keyword)
-           :values (parse-exprs (subvec tokens 5) ")") ; convert to literal / binary expressions?
-          ; (mapv
-          ;  (fn [v] (convert (v :token) (v :type)))
-          ;  )
-           }
+           :values (mapv convert (parse-exprs (subvec tokens 5) ")"))}
           (println "Expected left parenthesis"))
         (println "Expected values keyword"))
       (println "Expected table names"))
@@ -127,8 +112,10 @@
   [tokens]
   ; "TODO: validation"
   ; some validation in parse exprs
-  (let [[select-expr from-expr]
-        (split-with #(not= (-> % :token) "from") (rest tokens))
+  (let [tokens (take-while #(not= (-> % :token) ";") tokens)
+        [select-expr from-expr] (split-with #(not= (-> % :token) "from") 
+                                            (rest tokens))
+
         where-expr (drop-while #(not= (-> % :token) "where") from-expr)
         from (-> from-expr second :token keyword)]
     (println select-expr)
@@ -141,27 +128,24 @@
                      (filter #(not= (-> % :token) ",")
                              select-expr))}
         {:from from
-         :where (mapv
-                 #(convert (-> % :type)
-                          (-> % :token))
-                          (rest where-expr))
+         :where (mapv convert (rest where-expr))
          :item (mapv #(-> % :token keyword)
                      (filter #(not= (-> % :token) ",")
                              select-expr))})
       {:from from
-       :item (parse-binary select-expr)})))
+       :item (mapv convert select-expr)})))
+
 
 (comment
 
   (def tkn [{:token "select", :type :keyword}
-                 {:token "id", :type :identifier}
-                 {:token ",", :type :symbol}
-                 {:token "name", :type :identifier}
-                 {:token "from", :type :string}
-                 {:token "t", :type :symbol}
-                 {:token ";", :type :symbol}] ":")
-
-)
+            {:token "id", :type :identifier}
+            {:token ",", :type :symbol}
+            {:token "name", :type :identifier}
+            {:token "from", :type :string}
+            {:token "t", :type :symbol}
+            {:token ";", :type :symbol}] ":")
+  comment)
 
 (defn parse-create
   " CREATE $table-name ( [$column-name $column-type [, ...]] ) "

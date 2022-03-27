@@ -4,6 +4,16 @@
 ; (def db {:customer {:cols [] :types [] :rows [][]}
 ;          :tbls2 {:cols [] :types [] :rows [][]}}})
 
+(defn- logical-or [a b] (or a b))
+(defn- logical-and [a b] (and a b))
+
+(def oper {'or logical-or
+           'and logical-and
+           :or logical-or
+           :and logical-and
+           '|| str
+           :|| str})
+
 (defonce db (atom {}))
 
 (defn insert-into
@@ -22,28 +32,13 @@
         cols (->> statement :cols (map :name) (mapv keyword))]
     (swap! db assoc (:name statement) {:cols cols :types dtypes :rows []})))
 
-
-(defn- logical-or [a b] (or a b))
-(defn- logical-and [a b] (and a b))
-
-(def oper {'or logical-or
-           'and logical-and
-           :or logical-or
-           :and logical-and
-           '|| str
-           :|| str
-           })
-
 (defn condfn
   ([t] t)
 
   ([t k1 op1 k2 link & other]
-
-   (prn link)
    ((oper link link)
     (apply condfn t other)
-    (condfn t k1 op1 k2)
-    ))
+    (condfn t k1 op1 k2)))
 
   ([t k1 op k2]
    (let [v1 (if (keyword? k1) (k1 t) k1)
@@ -61,8 +56,6 @@
 
         out (->> (get @db (:from statement))
                  :rows
-                 ; where
-                 ; (filter #(op (-> % expr2) expr1)
                  (filter (fn [t] (condfn t (:where statement))))
                  (mapv #(select-keys % cols)))]
     (if out
@@ -80,33 +73,34 @@
 
 ; ;;;;;;;;;;;;;;;;;;;;;;; SCRATCH ;;;;;;;;;;;;;;;;;;;;;;;
 
-(do
-  (reset! db {})
-  (create-table {:name :customer,
-                 :cols
-                 [{:name "id", :datatype "int"}
-                  {:name "name", :datatype "text"}
-                  {:name "email", :datatype "text"}]})
-  (create-table {:name :t
-                 :cols
-                 [{:name "id", :datatype "int"}
-                  {:name "name", :datatype "text"}]})
-  (create-table {:name :a
-                 :cols
-                 [{:name "id", :datatype "int"}]})
+(comment
+  (do
+    @db
+    (reset! db {})
+    (create-table {:name :customer,
+                   :cols
+                   [{:name "id", :datatype "int"}
+                    {:name "name", :datatype "text"}
+                    {:name "email", :datatype "text"}]})
+    (create-table {:name :t
+                   :cols
+                   [{:name "id", :datatype "int"}
+                    {:name "name", :datatype "text"}]})
+    (create-table {:name :a
+                   :cols
+                   [{:name "id", :datatype "int"}]})
 
-  (get-in @db [:t :rows])
+    (insert-into {:table :customer, :values [1 "'user1'" "'user1@clj.org'"]})
+    (insert-into {:table :customer, :values [2 "'user2'" "'user2@clj.org'"]})
+    (insert-into {:table :customer, :values [3 "'user3'" "'user3@clj.org'"]})
+    (insert-into {:table :customer, :values [4 "'user4'" "'user4@clj.org'"]})
+    (insert-into {:table :customer, :values [5 "'user5'" "'user5@clj.org'"]})
+    (insert-into {:table :t :values [1 "'3'"]})
+    (insert-into {:table :t :values [2 "'Jerry'"]})
+    (insert-into {:table :t :values [3 "'Ben'"]})
+    (insert-into {:table :t :values [4 "'Sandra'"]})
+    (insert-into {:table :a :values [1]})
+    ;(select {:from :t, :where '[:id >= 3 and :id < 4], :item [:*]})
+    )
 
-  (insert-into {:table :customer, :values [1 "'user1'" "'user1@clj.org'"]})
-  (insert-into {:table :customer, :values [2 "'user2'" "'user2@clj.org'"]})
-  (insert-into {:table :customer, :values [3 "'user3'" "'user3@clj.org'"]})
-  (insert-into {:table :customer, :values [4 "'user4'" "'user4@clj.org'"]})
-  (insert-into {:table :customer, :values [5 "'user5'" "'user5@clj.org'"]})
-  (insert-into {:table :t :values [1 "'3'"]})
-  (insert-into {:table :t :values [2 "'name'"]})
-  (insert-into {:table :t :values [3 "'name'"]})
-  (insert-into {:table :t :values [4 "'name'"]})
-  (insert-into {:table :a :values [1]})
-  (select {:from :t, :where '[:id >= 3 and :id < 4], :item [:*]}))
-
-
+  comment)

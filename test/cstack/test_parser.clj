@@ -90,5 +90,19 @@
                  {:token "+", :type :symbol}
                  {:token "1", :type :number}
                  {:token ";", :type :symbol}])
-  [])
+
+  (->> {:token "<", :type :symbol}
+       convert)
+
+  (->>  [{:token "id", :type :identifier}
+         {:token ">", :type :symbol}
+         {:token "1", :type :number}
+         {:token "and", :type :symbol}
+         {:token "id", :type :identifier}
+         {:token "<", :type :symbol}
+         {:token "5", :type :number}
+         {:token ";", :type :symbol}]
+        (map convert))
+
+  comment)
 

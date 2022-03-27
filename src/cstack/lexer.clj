@@ -8,14 +8,11 @@
   #{"select" "from" "as" "table" "create" "insert" "into" "values" "int" "text"})
 
 (def symbols
-  {:semicolon  ";" 
-   :asterisk   "*" 
-   :comma      "," 
-   :leftparen  "(" 
+  {:semicolon  ";"
+   :asterisk   "*"
+   :comma      ","
+   :leftparen  "("
    :rightparen ")"})
-
-(:semicolon symbols)
-(get keywords "select")
 
 (def token-kind #{:keyword :symbol :identifier :string :number})
 
