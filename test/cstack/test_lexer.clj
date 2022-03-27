@@ -15,7 +15,7 @@
 
 (deftest lex-symbol-type
   (are [x] (= ((typer x) :type) :symbol)
-    ";" "*" "<>" "<=" "<=" "*" "="))
+    ";" "||" "<>" "<=" "<=" "*" "="))
 
 (deftest lex-identifier-type
   (is (= ((typer "t") :type) :identifier))

@@ -29,7 +29,7 @@
   (re-find #"[a-zA-Z]" c))
 
 (defn asymbol? [c]
-  (re-find #"[\(\)\[\]!\.+-><=\?*]" c))
+  (re-find #"[||\(\)\[\]!\.+-><=\?*]" c))
 
 (defn astring? [c]
   (re-find #"[\"']" c))
