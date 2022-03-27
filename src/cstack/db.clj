@@ -100,7 +100,7 @@
     (insert-into {:table :t :values [3 "'Ben'"]})
     (insert-into {:table :t :values [4 "'Sandra'"]})
     (insert-into {:table :a :values [1]})
-    ;(select {:from :t, :where '[:id >= 3 and :id < 4], :item [:*]})
-    )
+    (select {:from :t, :where '[4], :item [:*]})
+    (select {:from nil, :where [], :item '[1 + 1]}))
 
   comment)

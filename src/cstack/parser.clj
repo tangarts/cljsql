@@ -10,19 +10,11 @@
               (catch Exception _ nil))
     token))
 
-; (def operation {'and 'or
-;          '= '=
-;          '<> 'not=
-;          '<  '<
-;          '> '>
-;          '<= '<= '>= '>=
-;          '|| str '+ '+})
-
-(def op {"and" 1 "or" 1
-         "=" 2 "<>" 2
-         "<" 3 ">" 3
-         "<=" 4 ">=" 4
-         "||" 5 "+" 5})
+(def op {"and"  1 "or"  1
+         "="    2 "<>"  2
+         "<"    3 ">"   3
+         "<="   4 ">="  4
+         "||"   5 "+"   5})
 
 (def ops
   (merge op
@@ -54,7 +46,8 @@
               a))))
     tokens))
 
-(defn parse-exprs [exprs delim]
+(defn parse-exprs
+  [exprs delim]
   (if (sequential? exprs)
     (loop [[x c & xs] exprs
            acc [x]]
@@ -69,17 +62,24 @@
                :else (println "expected comma")))))
     exprs))
 
-(defn column-def [exprs delim]
+(def column-type #{"integer" "int" "numeric" "num" "text"})
+
+(defn column-def
+  ; Doesn't support constraints only [column name, type name ..]
+  [exprs delim]
   (if (sequential? exprs)
     (loop [[cn tn c & xs] exprs
            acc [cn tn]]
-      (if  (nil? cn) (println "Expected " delim)
-           (let [[cnn tnn & _] xs]
-             (cond
-               (= delim (:token c)) acc
-               (= "," (:token c)) (recur xs (conj acc cnn tnn))
+      (if (nil? cn) (println "Expected " delim)
+          (let [[cnn tnn & _] xs]
+            (cond
+              (nil? (column-type (:token tn)))
+              (println "Unrecognized column type, must be one of " column-type)
 
-               :else (println "expected comma")))))
+              (= delim (:token c)) acc
+              (= "," (:token c)) (recur xs (conj acc cnn tnn))
+
+              :else (println "expected comma")))))
     exprs))
 
 (defn parse-insert
@@ -96,56 +96,24 @@
       (println "Expected table names"))
     (println "Expected into")))
 
-(parse-insert [{:token "insert", :type :keyword}
-               {:token "into", :type :keyword}
-               {:token "db", :type :identifier}
-               {:token "values", :type :keyword}
-               {:token "(", :type :symbol}
-               {:token "1", :type :number}
-               {:token ",", :type :symbol}
-               {:token "'user'", :type :string}
-               {:token ")", :type :symbol}
-               {:token ";", :type :symbol}])
-
 (defn parse-select
   " SELECT $expression [, ...] FROM $table-name "
   [tokens]
-  ; "TODO: validation"
-  ; some validation in parse exprs
-  (let [tokens (take-while #(not= (-> % :token) ";") tokens)
-        [select-expr from-expr] (split-with #(not= (-> % :token) "from") 
-                                            (rest tokens))
+  (let [tokens
+        (take-while #(not= (-> % :token) ";") tokens)
+
+        [select-expr from-expr]
+        (split-with #(not= (-> % :token) "from") (rest tokens))
 
         where-expr (drop-while #(not= (-> % :token) "where") from-expr)
         from (-> from-expr second :token keyword)]
-    (println select-expr)
-    (println from-expr)
-    (println where-expr)
     (if (not= '() from-expr)
-      (if (= '() where-expr)
-        {:from from
-         :item (mapv #(-> % :token keyword)
-                     (filter #(not= (-> % :token) ",")
-                             select-expr))}
-        {:from from
-         :where (mapv convert (rest where-expr))
-         :item (mapv #(-> % :token keyword)
-                     (filter #(not= (-> % :token) ",")
-                             select-expr))})
+      {:from from
+       :where (mapv convert (rest where-expr))
+       :item (mapv #(-> % :token keyword)
+                   (parse-exprs select-expr nil))}
       {:from from
        :item (mapv convert select-expr)})))
-
-
-(comment
-
-  (def tkn [{:token "select", :type :keyword}
-            {:token "id", :type :identifier}
-            {:token ",", :type :symbol}
-            {:token "name", :type :identifier}
-            {:token "from", :type :string}
-            {:token "t", :type :symbol}
-            {:token ";", :type :symbol}] ":")
-  comment)
 
 (defn parse-create
   " CREATE $table-name ( [$column-name $column-type [, ...]] ) "
@@ -155,8 +123,7 @@
       (if (= (get-in input [3 :token]) "(")
         {:name (-> (input 2) :token keyword)
          :cols
-         (mapv (fn [[t ts] & _]
-                 {:name t :datatype ts})
+         (mapv (fn [[t ts] & _] {:name t :datatype ts})
                (partition 2 (map :token
                                  (column-def (subvec input 4) ")"))))}
         (println "Expected left parenthesis"))
@@ -170,3 +137,16 @@
     "insert" {:kind :insert :statement (parse-insert tokens)}
     "create" {:kind :create :statement (parse-create tokens)}
     {:kind (-> tokens first :token keyword) :statement nil}))
+
+;;;;;;;;;;;;;;;;; SCRATCH ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(comment
+
+  (def tkn [{:token "select", :type :keyword}
+            {:token "id", :type :identifier}
+            {:token ",", :type :symbol}
+            {:token "name", :type :identifier}
+            {:token "from", :type :string}
+            {:token "t", :type :symbol}
+            {:token ";", :type :symbol}] ":")
+  comment)

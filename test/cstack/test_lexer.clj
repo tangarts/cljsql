@@ -7,7 +7,6 @@
        ; .3 FAILS
     "1" "1.03" "0.03" "100" "1e3" "1E4"))
 
-
 (deftest lex-keyword-type
   (are [x] (= ((typer x) :type) :string)
     "'user'"
@@ -15,7 +14,7 @@
 
 (deftest lex-symbol-type
   (are [x] (= ((typer x) :type) :symbol)
-    ";" "||" "<>" "<=" "<=" "*" "="))
+    ";" "||" "<>" "<=" "<=" "*" "=" ","))
 
 (deftest lex-identifier-type
   (is (= ((typer "t") :type) :identifier))
